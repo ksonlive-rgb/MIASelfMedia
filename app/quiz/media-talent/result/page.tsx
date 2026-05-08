@@ -1,9 +1,10 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { Suspense, useState } from "react";
+import { Suspense, useState, useEffect } from "react";
 import Link from "next/link";
 import { QuizOption } from "@/data/quizzes/mediaTalent";
+import { savePaidStatus } from "@/utils/storage";
 
 const personalityData = {
   creator: {
@@ -28,20 +29,100 @@ const personalityData = {
   },
 };
 
-function PaymentModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+function isMobileDevice(): boolean {
+  if (typeof window === "undefined") return false;
+  const userAgent = window.navigator.userAgent.toLowerCase();
+  return /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
+}
+
+interface PaymentModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  personalityType: string;
+}
+
+function PaymentModal({ isOpen, onClose, personalityType }: PaymentModalProps) {
+  const [isLoading, setIsLoading] = useState(false);
+  const [qrCode, setQrCode] = useState<string | null>(null);
+  const [payUrl, setPayUrl] = useState<string | null>(null);
+  const [orderNo, setOrderNo] = useState<string | null>(null);
+  const [isPaid, setIsPaid] = useState(false);
+  const [isPolling, setIsPolling] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isOpen || !personalityType) return;
+
+    setIsLoading(true);
+    setError(null);
+    setQrCode(null);
+    setPayUrl(null);
+    setOrderNo(null);
+    setIsPaid(false);
+
+    fetch("/api/pay/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: personalityType }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.qrCode) {
+          setQrCode(data.qrCode);
+          setPayUrl(data.payUrl);
+          setOrderNo(data.orderNo);
+
+          if (isMobileDevice() && data.payUrl) {
+            window.location.href = data.payUrl;
+          }
+        } else {
+          setError(data.error || "创建订单失败");
+        }
+      })
+      .catch(() => setError("网络错误"))
+      .finally(() => setIsLoading(false));
+  }, [isOpen, personalityType]);
+
+  useEffect(() => {
+    if (!orderNo || !isPolling) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch("/api/pay/check", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ orderNo }),
+        });
+        const data = await res.json();
+
+        if (data.paid) {
+          setIsPaid(true);
+          setIsPolling(false);
+          clearInterval(interval);
+          savePaidStatus("media-talent", personalityType);
+          setTimeout(() => {
+            window.location.href = "/payment/success";
+          }, 1500);
+        }
+      } catch {
+        // ignore polling errors
+      }
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [orderNo, isPolling, personalityType]);
+
+  const startPolling = () => {
+    setIsPolling(true);
+  };
+
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
 
-      {/* Modal */}
       <div className="relative w-full max-w-md bg-zinc-900 border border-purple-500/30 rounded-2xl p-6 md:p-8 shadow-2xl shadow-purple-500/10">
-        {/* Close Button */}
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-zinc-500 hover:text-zinc-300 transition-colors"
@@ -51,7 +132,6 @@ function PaymentModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => voi
           </svg>
         </button>
 
-        {/* Content */}
         <div className="text-center mb-6">
           <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-purple-600/30 to-fuchsia-600/30 border border-purple-500/20 flex items-center justify-center">
             <svg className="w-8 h-8 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -62,39 +142,88 @@ function PaymentModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => voi
           <p className="text-zinc-400 text-sm">支付后可查看</p>
         </div>
 
-        {/* Benefits List */}
-        <div className="bg-zinc-800/50 rounded-xl p-4 mb-6 space-y-3">
-          {[
-            "账号定位",
-            "起号建议",
-            "内容方向",
-            "流量优势",
-            "AI时代成长路线",
-            "未来风险提醒",
-          ].map((item, idx) => (
-            <div key={idx} className="flex items-center gap-3 text-sm text-zinc-300">
-              <svg className="w-4 h-4 text-purple-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        {isLoading && (
+          <div className="text-center py-8">
+            <div className="w-12 h-12 mx-auto mb-4 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" />
+            <p className="text-zinc-400">正在创建订单...</p>
+          </div>
+        )}
+
+        {error && (
+          <div className="text-center py-8">
+            <p className="text-red-400 mb-4">{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-6 py-2 rounded-full bg-purple-600 text-white text-sm"
+            >
+              重试
+            </button>
+          </div>
+        )}
+
+        {isPaid && (
+          <div className="text-center py-8">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-green-500/20 flex items-center justify-center">
+              <svg className="w-8 h-8 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
-              <span>{item}</span>
             </div>
-          ))}
-        </div>
+            <p className="text-green-400 font-semibold">支付成功！</p>
+            <p className="text-zinc-400 text-sm mt-2">正在跳转...</p>
+          </div>
+        )}
 
-        {/* Price */}
-        <div className="text-center mb-6">
-          <span className="text-3xl font-bold text-purple-400">¥9.9</span>
-        </div>
+        {!isLoading && !error && !isPaid && qrCode && (
+          <>
+            <div className="bg-zinc-800/50 rounded-xl p-4 mb-6 space-y-3">
+              {[
+                "账号定位",
+                "起号建议",
+                "内容方向",
+                "流量优势",
+                "AI时代成长路线",
+                "未来风险提醒",
+              ].map((item, idx) => (
+                <div key={idx} className="flex items-center gap-3 text-sm text-zinc-300">
+                  <svg className="w-4 h-4 text-purple-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span>{item}</span>
+                </div>
+              ))}
+            </div>
 
-        {/* Pay Button */}
-        <a
-          href="https://zpayz.cn"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="block w-full py-3 rounded-full bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white font-semibold text-center transition-all hover:scale-[1.02] hover:shadow-lg hover:shadow-purple-500/25"
-        >
-          立即支付
-        </a>
+            <div className="text-center mb-6">
+              <span className="text-3xl font-bold text-purple-400">¥9.9</span>
+            </div>
+
+            {!isPolling && (
+              <div className="text-center">
+                <img src={qrCode} alt="支付二维码" className="w-48 h-48 mx-auto mb-4 rounded-lg" />
+                <p className="text-zinc-400 text-sm mb-4">请使用微信/支付宝扫码支付</p>
+                <button
+                  onClick={startPolling}
+                  className="w-full py-3 rounded-full bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white font-semibold transition-all hover:scale-[1.02] hover:shadow-lg hover:shadow-purple-500/25"
+                >
+                  我已支付
+                </button>
+              </div>
+            )}
+
+            {isPolling && (
+              <div className="text-center py-4">
+                <div className="w-8 h-8 mx-auto mb-4 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" />
+                <p className="text-zinc-400 text-sm">检测支付结果中...</p>
+              </div>
+            )}
+          </>
+        )}
+
+        {!isLoading && !error && !qrCode && !isPaid && (
+          <div className="text-center">
+            <p className="text-zinc-400 mb-4">正在准备支付...</p>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -134,7 +263,6 @@ function ResultContent() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-purple-950 to-zinc-950 text-zinc-100 flex flex-col">
-      {/* Header */}
       <nav className="border-b border-purple-900/30 bg-zinc-950/80 backdrop-blur-md">
         <div className="mx-auto max-w-3xl px-4 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
@@ -146,10 +274,8 @@ function ResultContent() {
         </div>
       </nav>
 
-      {/* Result Content */}
       <main className="flex-1 flex flex-col items-center justify-center px-4 py-12">
         <div className="w-full max-w-lg text-center">
-          {/* Success Badge */}
           <div className="mb-6">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-green-500/20 border border-green-500/30 text-green-400 text-sm">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -159,7 +285,6 @@ function ResultContent() {
             </div>
           </div>
 
-          {/* Result Card */}
           <div className="bg-zinc-900/80 border border-purple-500/20 rounded-2xl p-8 backdrop-blur-sm">
             <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-purple-600/30 to-fuchsia-600/30 border border-purple-500/20 flex items-center justify-center">
               <svg className="w-10 h-10 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -171,7 +296,6 @@ function ResultContent() {
             <h1 className="text-3xl font-bold text-purple-100 mb-4">{personality.name}</h1>
             <p className="text-zinc-400 leading-relaxed mb-6">{personality.description}</p>
 
-            {/* Free Advice */}
             <div className="bg-zinc-800/50 rounded-xl p-5 text-left border border-purple-500/10">
               <div className="flex items-center gap-2 mb-3">
                 <svg className="w-5 h-5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -183,7 +307,6 @@ function ResultContent() {
             </div>
           </div>
 
-          {/* Paywall */}
           <div className="mt-8 bg-gradient-to-r from-purple-900/40 to-fuchsia-900/40 rounded-2xl p-6 border border-purple-500/20">
             <p className="text-zinc-300 text-sm mb-4">
               解锁完整报告，获得更深入的性格分析和专属发展建议
@@ -200,18 +323,17 @@ function ResultContent() {
             </button>
           </div>
 
-          {/* Back Home */}
-          <Link
-            href="/"
-            className="inline-block mt-8 text-zinc-500 text-sm hover:text-purple-400 transition-colors"
-          >
+          <Link href="/" className="inline-block mt-8 text-zinc-500 text-sm hover:text-purple-400 transition-colors">
             返回首页
           </Link>
         </div>
       </main>
 
-      {/* Payment Modal */}
-      <PaymentModal isOpen={showModal} onClose={() => setShowModal(false)} />
+      <PaymentModal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        personalityType={dominantType}
+      />
     </div>
   );
 }
