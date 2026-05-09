@@ -252,33 +252,57 @@ function PaymentModal({ isOpen, onClose, personalityType }: PaymentModalProps) {
 
 function ResultContent() {
   const [showModal, setShowModal] = useState(false);
+  const [dominantType, setDominantType] = useState<QuizOption["type"] | null>(null);
   const searchParams = useSearchParams();
   const answersParam = searchParams.get("answers");
 
-  if (!answersParam) {
+  useEffect(() => {
+    let answers: QuizOption["type"][] = [];
+
+    // Try to get answers from URL first
+    if (answersParam) {
+      answers = answersParam.split(",") as QuizOption["type"][];
+    } else {
+      // Fallback to localStorage
+      const stored = localStorage.getItem("media_talent_answers");
+      if (stored) {
+        try {
+          answers = JSON.parse(stored);
+        } catch {
+          // ignore parse error
+        }
+      }
+    }
+
+    if (answers.length === 0) return;
+
+    const typeCounts: Record<QuizOption["type"], number> = {
+      creator: 0,
+      operator: 0,
+      storyteller: 0,
+      analyst: 0,
+    };
+
+    answers.forEach((answer) => {
+      if (answer in typeCounts) {
+        typeCounts[answer]++;
+      }
+    });
+
+    const dominant = (Object.entries(typeCounts).sort((a, b) => b[1] - a[1])[0][0]) as QuizOption["type"];
+    setDominantType(dominant);
+  }, [answersParam]);
+
+  if (!dominantType) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-purple-950 to-zinc-950 text-zinc-100 flex items-center justify-center">
-        <p className="text-zinc-400">没有找到测试结果</p>
+      <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-purple-950 to-zinc-950 text-zinc-100 flex flex-col items-center justify-center">
+        <p className="text-zinc-400 mb-4">没有找到测试结果</p>
+        <Link href="/quiz/media-talent" className="text-purple-400 hover:text-purple-300">
+          重新测试
+        </Link>
       </div>
     );
   }
-
-  const answers = answersParam.split(",") as QuizOption["type"][];
-
-  const typeCounts: Record<QuizOption["type"], number> = {
-    creator: 0,
-    operator: 0,
-    storyteller: 0,
-    analyst: 0,
-  };
-
-  answers.forEach((answer) => {
-    if (answer in typeCounts) {
-      typeCounts[answer]++;
-    }
-  });
-
-  const dominantType = (Object.entries(typeCounts).sort((a, b) => b[1] - a[1])[0][0]) as QuizOption["type"];
 
   const personality = personalityData[dominantType];
 

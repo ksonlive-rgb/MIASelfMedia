@@ -11,7 +11,6 @@ export default function MediaTalentPage() {
   const router = useRouter();
 
   const currentQuestion = mediaTalentQuiz[currentIndex];
-  const progress = ((currentIndex) / mediaTalentQuiz.length) * 100;
 
   const handleSelect = (type: QuizOption["type"]) => {
     if (isAnimating) return;
@@ -25,6 +24,8 @@ export default function MediaTalentPage() {
         setCurrentIndex(currentIndex + 1);
         setIsAnimating(false);
       } else {
+        // Save answers to localStorage before navigation
+        localStorage.setItem("media_talent_answers", JSON.stringify(newAnswers));
         router.push(`/quiz/media-talent/result?answers=${newAnswers.join(",")}`);
       }
     }, 300);
