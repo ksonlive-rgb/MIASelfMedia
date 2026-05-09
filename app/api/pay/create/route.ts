@@ -24,6 +24,7 @@ export async function POST(request: NextRequest) {
     }
 
     const notifyUrl = `${baseUrl}/api/pay/notify`;
+    const returnUrl = `${baseUrl}/payment/success`;
 
     // Build parameters object (excluding sign and sign_type)
     const params: Record<string, string> = {
@@ -31,6 +32,7 @@ export async function POST(request: NextRequest) {
       type: payType,
       out_trade_no: orderNo,
       notify_url: notifyUrl,
+      return_url: returnUrl,
       name: "自媒体天赋测试",
       money: "0.01",
       clientip: "127.0.0.1",
@@ -50,13 +52,26 @@ export async function POST(request: NextRequest) {
     formData.append("type", payType);
     formData.append("out_trade_no", orderNo);
     formData.append("notify_url", notifyUrl);
+    formData.append("return_url", returnUrl);
     formData.append("name", "自媒体天赋测试");
     formData.append("money", "0.01");
     formData.append("clientip", "127.0.0.1");
     formData.append("sign_type", "MD5");
     formData.append("sign", sign);
 
-    const fallbackUrl = `https://zpayz.cn/submit.php?${formData.toString()}`;
+    // Build fallbackParams for POST form submission
+    const fallbackParams: Record<string, string> = {
+      pid: appId,
+      type: payType,
+      out_trade_no: orderNo,
+      notify_url: notifyUrl,
+      return_url: returnUrl,
+      name: "自媒体天赋测试",
+      money: "0.01",
+      clientip: "127.0.0.1",
+      sign_type: "MD5",
+      sign: sign,
+    };
 
     // Make request to ZPay with browser-like headers
     const response = await fetch("https://zpayz.cn/mapi.php", {
@@ -80,9 +95,9 @@ export async function POST(request: NextRequest) {
 
     // If response is empty, use fallback
     if (!text || text.trim() === "") {
-      console.error("ZPay returned empty response, using fallback URL");
+      console.error("ZPay returned empty response, using fallback");
       return NextResponse.json({
-        fallbackUrl,
+        fallbackParams,
         orderNo,
       });
     }
@@ -93,9 +108,9 @@ export async function POST(request: NextRequest) {
     } catch (e) {
       console.error("ZPay响应解析失败:");
       console.error("Response (first 500 chars):", text.substring(0, 500));
-      // Return fallback URL instead of 500 error
+      // Return fallback params for POST form submission
       return NextResponse.json({
-        fallbackUrl,
+        fallbackParams,
         orderNo,
       });
     }
@@ -113,16 +128,50 @@ export async function POST(request: NextRequest) {
     // ZPay returned an error, use fallback
     console.error("ZPay API Error:", data);
     return NextResponse.json({
-      fallbackUrl,
+      fallbackParams,
       orderNo,
     });
 
   } catch (error) {
     console.error("创建支付订单失败:", error);
-    // Return fallback URL instead of 500 error
-    const fallbackUrl = `https://zpayz.cn/submit.php?pid=${process.env.ZPAY_APP_ID}&out_trade_no=${orderNo}&type=wxpay&money=0.01&name=自媒体天赋测试`;
+    // Rebuild fallbackParams for error case
+    const appId = process.env.ZPAY_APP_ID || "";
+    const appKey = process.env.ZPAY_APP_KEY || "";
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+    const notifyUrl = `${baseUrl}/api/pay/notify`;
+    const returnUrl = `${baseUrl}/payment/success`;
+
+    const params: Record<string, string> = {
+      pid: appId,
+      type: "wxpay",
+      out_trade_no: orderNo,
+      notify_url: notifyUrl,
+      return_url: returnUrl,
+      name: "自媒体天赋测试",
+      money: "0.01",
+      clientip: "127.0.0.1",
+    };
+
+    const sortedKeys = Object.keys(params).sort();
+    const paramString = sortedKeys.map((k) => `${k}=${params[k]}`).join("&");
+    const signString = paramString + appKey;
+    const sign = crypto.createHash("md5").update(signString).digest("hex").toUpperCase();
+
+    const fallbackParams: Record<string, string> = {
+      pid: appId,
+      type: "wxpay",
+      out_trade_no: orderNo,
+      notify_url: notifyUrl,
+      return_url: returnUrl,
+      name: "自媒体天赋测试",
+      money: "0.01",
+      clientip: "127.0.0.1",
+      sign_type: "MD5",
+      sign: sign,
+    };
+
     return NextResponse.json({
-      fallbackUrl,
+      fallbackParams,
       orderNo,
     });
   }

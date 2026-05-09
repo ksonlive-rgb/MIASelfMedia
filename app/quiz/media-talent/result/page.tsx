@@ -68,9 +68,23 @@ function PaymentModal({ isOpen, onClose, personalityType }: PaymentModalProps) {
     })
       .then((res) => res.json())
       .then((data) => {
-        // If backend returns fallbackUrl, redirect to ZPay cashier directly
-        if (data.fallbackUrl) {
-          window.location.href = data.fallbackUrl;
+        // If backend returns fallbackParams, submit form to ZPay cashier via POST
+        if (data.fallbackParams) {
+          const form = document.createElement("form");
+          form.method = "POST";
+          form.action = "https://zpayz.cn/submit.php";
+          form.style.display = "none";
+
+          Object.entries(data.fallbackParams).forEach(([key, value]) => {
+            const input = document.createElement("input");
+            input.type = "hidden";
+            input.name = key;
+            input.value = value as string;
+            form.appendChild(input);
+          });
+
+          document.body.appendChild(form);
+          form.submit();
           return;
         }
 
