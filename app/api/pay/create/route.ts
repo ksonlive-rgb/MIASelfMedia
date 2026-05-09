@@ -37,9 +37,9 @@ export async function POST(request: NextRequest) {
     const sortedKeys = Object.keys(params).sort();
     const paramString = sortedKeys.map((k) => `${k}=${params[k]}`).join("&");
 
-    // Generate MD5 sign: sortParamsString + KEY, then MD5 uppercase
+    // Generate MD5 sign: sortParamsString + KEY, then MD5 lowercase
     const signString = paramString + appKey;
-    const sign = crypto.createHash("md5").update(signString).digest("hex").toUpperCase();
+    const sign = crypto.createHash("md5").update(signString).digest("hex").toLowerCase();
 
     // Build form data for ZPay API
     const formData = new URLSearchParams();
@@ -152,7 +152,7 @@ export async function POST(request: NextRequest) {
     const sortedKeys = Object.keys(params).sort();
     const paramString = sortedKeys.map((k) => `${k}=${params[k]}`).join("&");
     const signString = paramString + appKey;
-    const sign = crypto.createHash("md5").update(signString).digest("hex").toUpperCase();
+    const sign = crypto.createHash("md5").update(signString).digest("hex").toLowerCase();
 
     const fallbackParams: Record<string, string> = {
       pid: appId,
