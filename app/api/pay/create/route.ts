@@ -1,17 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 
-interface CreatePayRequest {
-  type?: "alipay" | "wxpay";
-}
-
 export async function POST(request: NextRequest) {
   const orderNo = `MIA_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
 
   try {
-    const body: CreatePayRequest = await request.json();
-    const payType = body.type || "wxpay";
-
     const appId = process.env.ZPAY_APP_ID;
     const appKey = process.env.ZPAY_APP_KEY;
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
@@ -23,13 +16,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // ZPay channel - always use alipay (or wxpay)
+    const zpayChannel = "alipay";
     const notifyUrl = `${baseUrl}/api/pay/notify`;
     const returnUrl = `${baseUrl}/payment/success`;
 
     // Build parameters object (excluding sign and sign_type)
     const params: Record<string, string> = {
       pid: appId,
-      type: payType,
+      type: zpayChannel,
       out_trade_no: orderNo,
       notify_url: notifyUrl,
       return_url: returnUrl,
@@ -46,10 +41,10 @@ export async function POST(request: NextRequest) {
     const signString = paramString + appKey;
     const sign = crypto.createHash("md5").update(signString).digest("hex").toUpperCase();
 
-    // Build form data
+    // Build form data for ZPay API
     const formData = new URLSearchParams();
     formData.append("pid", appId);
-    formData.append("type", payType);
+    formData.append("type", zpayChannel);
     formData.append("out_trade_no", orderNo);
     formData.append("notify_url", notifyUrl);
     formData.append("return_url", returnUrl);
@@ -62,7 +57,7 @@ export async function POST(request: NextRequest) {
     // Build fallbackParams for POST form submission
     const fallbackParams: Record<string, string> = {
       pid: appId,
-      type: payType,
+      type: zpayChannel,
       out_trade_no: orderNo,
       notify_url: notifyUrl,
       return_url: returnUrl,
@@ -134,16 +129,18 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error("创建支付订单失败:", error);
+
     // Rebuild fallbackParams for error case
     const appId = process.env.ZPAY_APP_ID || "";
     const appKey = process.env.ZPAY_APP_KEY || "";
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+    const zpayChannel = "alipay";
     const notifyUrl = `${baseUrl}/api/pay/notify`;
     const returnUrl = `${baseUrl}/payment/success`;
 
     const params: Record<string, string> = {
       pid: appId,
-      type: "wxpay",
+      type: zpayChannel,
       out_trade_no: orderNo,
       notify_url: notifyUrl,
       return_url: returnUrl,
@@ -159,7 +156,7 @@ export async function POST(request: NextRequest) {
 
     const fallbackParams: Record<string, string> = {
       pid: appId,
-      type: "wxpay",
+      type: zpayChannel,
       out_trade_no: orderNo,
       notify_url: notifyUrl,
       return_url: returnUrl,
