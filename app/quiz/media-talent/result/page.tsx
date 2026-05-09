@@ -59,6 +59,7 @@ function PaymentModal({ isOpen, onClose, personalityType }: PaymentModalProps) {
     setPayUrl(null);
     setOrderNo(null);
     setIsPaid(false);
+    setIsPolling(false);
 
     fetch("/api/pay/create", {
       method: "POST",
@@ -67,6 +68,12 @@ function PaymentModal({ isOpen, onClose, personalityType }: PaymentModalProps) {
     })
       .then((res) => res.json())
       .then((data) => {
+        // If backend returns fallbackUrl, redirect to ZPay cashier directly
+        if (data.fallbackUrl) {
+          window.location.href = data.fallbackUrl;
+          return;
+        }
+
         if (data.success && data.qrCode) {
           setQrCode(data.qrCode);
           setPayUrl(data.payUrl);
