@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MIA的图灵迷宫 - 自媒体天赋诊断</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+    
+    <style>
+        /* CSS 样式 */
+        :root {
+            --primary-color: #f06292; /* 主题粉：亲和力与创造力 */
+            --secondary-color: #26a69a; /* 强调绿：专业与效率 */
+            --background-color: #f8f9fa;
+            --card-background: #ffffff;
+            --text-color: #343a40;
+            --light-text-color: #6c757d;
+            --shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+            --border-radius: 8px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Noto Sans SC', sans-serif;
+        }
+
+        body {
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            padding-bottom: 80px;
+        }
+
+        /* --- 1. 移动端容器优化 --- */
+        .container {
+            width: 100%; 
+            margin: 0 auto; 
+            padding: 0 15px; 
+        }
+        
+        /* 头部和进度条 */
+        .header {
+            background: linear-gradient(90deg, var(--primary-color), #ff9eb0);
+            color: white;
+            padding: 30px 20px;
+            border-radius: var(--border-radius);
+            text-align: center;
+            margin-bottom: 25px;
+            box-shadow: var(--shadow);
+            margin-left: -15px; 
+            margin-right: -15px; 
+            width: calc(100% + 30px); 
+        }
+
+        .progress-bar {
+            height: 8px;
+            background-color: rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+            margin-top: 15px;
+            overflow: hidden;
+        }
+
+        .progress {
+            height: 100%;
+            width: 0%;
+            background-color: #fff;
+            transition: width 0.3s ease-in-out;
+            border-radius: 4px;
+        }
+
+        /* 题目卡片和通用卡片样式 */
+        .quiz-card {
+            background-color: var(--card-background);
+            border-radius: var(--border-radius);
+            padding: 20px; 
+            box-shadow: var(--shadow);
+            margin-bottom: 20px;
+        }
+
+        /* --- 2. 优化起始页面设计 (保持不变) --- */
+        #startScreen {
+            padding: 40px 20px; 
+            border: 2px solid var(--primary-color);
+            background: linear-gradient(145deg, #ffffff, #fff7f9); 
+            text-align: center;
+        }
+
+        .start-title-container {
+            overflow: hidden; 
+            margin-bottom: 20px;
+        }
+
+        .start-title {
+            color: var(--primary-color);
+            font-size: 1.6em; 
+            font-weight: 900; 
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.1);
+            white-space: nowrap; 
+            display: inline-block; 
+        }
+
+        .start-subtitle {
+            color: var(--secondary-color);
+            font-size: 1.3em;
+            font-weight: 700;
+            margin-top: 5px;
+            margin-bottom: 15px;
+            white-space: nowrap; 
+            overflow: hidden;
+            text-align: center;
+        }
+
+        #startScreen p {
+            color: var(--light-text-color);
+            margin-bottom: 20px;
+        }
+
+        .input-group {
+            margin-bottom: 25px;
+        }
+
+        .input-group input {
+            width: 100%; 
+            max-width: 300px; 
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: var(--border-radius);
+            margin-top: 10px;
+            text-align: center;
+        }
+        
+        .question-number {
+            font-size: 1.1em;
+            color: var(--secondary-color);
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .question-text {
+            font-size: 1.2em; 
+            margin-bottom: 20px;
+            font-weight: 700;
+        }
+
+        /* 选项样式 */
+        .option-item {
+            border: 1px solid #e0e0e0;
+            padding: 12px 15px;
+            margin-bottom: 10px;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: background-color 0.15s, border-color 0.15s, transform 0.1s;
+        }
+
+        .option-item:hover {
+            border-color: var(--primary-color);
+            background-color: #fcf3f6;
+        }
+        
+        .option-item.selected {
+            background-color: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+            font-weight: 700;
+            transform: scale(1.01);
+        }
+
+        /* 按钮 */
+        .btn {
+            background: var(--primary-color);
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: var(--border-radius);
+            font-size: 1em;
+            cursor: pointer;
+            transition: background 0.3s ease;
+            width: 100%; 
+            max-width: 300px;
+        }
+        .btn:hover {
+            background: #e91e63;
+        }
+        .btn#submitBtn {
+             background: var(--secondary-color);
+        }
+        .btn-group {
+             justify-content: center;
+        }
+        
+        /* --- 3. 结果展示标题优化 --- */
+        .result-container h2 {
+            color: var(--primary-color);
+            font-size: 1.5em; /* 维持大字号 */
+            white-space: nowrap; 
+            overflow: hidden; 
+            text-align: center; 
+            margin-bottom: 20px;
+        }
+
+        .report-section {
+            padding: 15px 0; 
+            margin-top: 15px;
+            border-top: 2px solid var(--primary-color);
+        }
+        
+        .report-section h3 {
+            color: var(--primary-color);
+            font-size: 1.3em; /* 略微缩小字号 */
+            margin-bottom: 15px;
+            border-left: 5px solid var(--primary-color);
+            padding-left: 10px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis; 
+        }
+        .report-section h4 {
+            color: var(--secondary-color);
+            font-size: 1.1em;
+            margin-top: 15px;
+            margin-bottom: 8px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis; 
+        }
+
+        #radarChartContainer {
+            width: 100%; 
+            max-width: 400px; 
+            margin: 20px auto;
+            min-height: 350px; 
+        }
+        
+        .result-list {
+            padding-left: 10px; 
+        }
+        .result-list li {
+            background-color: #f4f4f4;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            font-size: 0.95em;
+        }
+        .result-list strong {
+            color: var(--secondary-color);
+        }
+
+        /* 运营规划卡片化样式 */
+        .plan-card {
+            background-color: #fcfcfc;
+            border: 1px solid #eee;
+            border-radius: var(--border-radius);
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.03);
+        }
+
+        .plan-card h5 {
+            color: var(--primary-color);
+            font-size: 1.2em;
+            margin-bottom: 10px;
+            border-bottom: 2px solid #ffedf2;
+            padding-bottom: 5px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis; 
+        }
+
+        .plan-detail {
+            margin-top: 10px;
+        }
+
+        .plan-detail strong {
+            display: block;
+            color: var(--secondary-color);
+            margin-bottom: 3px;
+            font-weight: 700;
+        }
+        .plan-detail p {
+            margin-left: 0;
+            margin-bottom: 5px;
+            font-size: 0.95em;
+        }
+
+        /* 底部备注 */
+        .footer-note {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: var(--card-background);
+            padding: 10px 0;
+            text-align: center;
+            border-top: 1px solid #ddd;
+            font-size: 0.9em;
+            color: var(--light-text-color);
+            z-index: 1000;
+        }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header class="header hidden" id="quizHeader">
+            <h1>MIA的图灵迷宫</h1>
+            <p>50道题，发掘你的核心优势，给出可落地运营方案</p>
+            <div class="progress-bar">
+                <div class="progress" id="progressBar"></div>
+            </div>
+        </header>
+
+        <div id="startScreen" class="quiz-card start-page">
+            <div class="start-title-container">
+                <h2 class="start-title">MIA的图灵迷宫</h2>
+            </div>
+            <div class="start-title-container">
+                <div class="start-subtitle">零基础自媒体天赋诊断</div>
+            </div>
+            
+            <p style="text-align: center; color: var(--light-text-color);">本报告为你提供最匹配的自媒体赛道和初步运营建议。</p>
+            
+            <div class="input-group">
+                <p>请联系管理员获取今日激活码。</p>
+                <input type="text" id="activationCodeInput" placeholder="请输入激活码">
+                <div class="error-message" id="codeError"></div>
+            </div>
+            <div style="text-align: center;">
+                <button class="btn" onclick="checkActivationCode()">开始测试</button>
+            </div>
+        </div>
+
+        <div id="quizSection" class="quiz-card hidden">
+            </div>
+
+        <div class="quiz-card result-container hidden" id="resultSection">
+            <h2>🎉 你的专属自媒体创业报告</h2> 
+            <div id="trackSuggestion">
+                </div>
+            <div class="btn-group" style="margin-top: 40px; display: flex; justify-content: center;">
+                <button class="btn" onclick="resetToStart()">重新测试</button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer-note">
+        本工具由 **MIA的图灵迷宫** 制作
+    </footer>
+
+    <script>
+        // --- 全局变量和数据定义 ---
+        const ACTIVATION_CODE = "333";
+        const quizHeader = document.getElementById('quizHeader');
+        const startScreen = document.getElementById('startScreen');
+        const quizSection = document.getElementById('quizSection');
+        const resultSection = document.getElementById('resultSection');
+        const trackSuggestion = document.getElementById('trackSuggestion');
+        const codeError = document.getElementById('codeError');
+        const codeInput = document.getElementById('activationCodeInput');
+        const TOTAL_QUESTIONS = 50;
+        
+        let currentQuestionIndex = 0;
+        let userAnswers = [];
+        let myRadarChart = null;
+
+        const abilityLabels = {
+            'A': '逻辑规划力', 'B': '表达感染力', 'C': '审美制作力', 'D': '专业知识度', 'E': '执行自律性',
+        };
+
+        // 题目数据 (保持不变)
+        const questions = [
+            // 核心能力与性格驱动 (10题)
+            { text: "当你开始一个新任务时，你最先做的事情是？", options: [{ text: "列出详细步骤和时间表。", score: { A: 3, E: 2 } }, { text: "思考如何让它有趣或独特。", score: { B: 2, C: 1 } }, { text: "马上动手，边做边想。", score: { E: 3 } }, { text: "查找资料，理解其背景和原理。", score: { D: 3, A: 2 } }] },
+            { text: "你对情绪管理和抗压能力的评价是？", options: [{ text: "冷静理性，几乎不受外界干扰。", score: { E: 3, A: 2 } }, { text: "能自我调节，但需要时间。", score: { E: 1, B: 1 } }, { text: "容易受情绪影响，但能很快恢复。", score: { B: 3, C: 2 } }, { text: "我擅长将压力转化为动力。", score: { E: 3, D: 1 } }] },
+            { text: "你更擅长哪种信息输出方式？", options: [{ text: "撰写结构严谨、论据充分的文章。", score: { D: 3, A: 3 } }, { text: "用生动的语言和肢体动作进行口头讲述。", score: { B: 4 } }, { text: "制作精美图片或视频来展示。", score: { C: 4, B: 2 } }, { text: "整理要点，形成清晰的流程图或清单。", score: { A: 4, E: 3 } }] },
+            { text: "你对日常环境中的色彩搭配、排版布局的敏感度如何？", options: [{ text: "非常高，有强烈的审美要求。", score: { C: 4 } }, { text: "有所关注，但不会过度纠结。", score: { C: 2, B: 1 } }, { text: "只关注实用性和功能性。", score: { D: 2, E: 2 } }, { text: "不太关注，内容有趣更重要。", score: { B: 3 } }] },
+            { text: "在遇到一个陌生且复杂的问题时，你的第一反应是？", options: [{ text: "立刻上网搜索权威解答和教程。", score: { D: 3, A: 2 } }, { text: "尝试拆解，用逻辑推理找出突破口。", score: { A: 4, D: 3 } }, { text: "找人讨论，寻求新的视角。", score: { B: 3 } }, { text: "靠直觉或过去经验进行大胆假设。", score: { C: 3 } }] },
+            { text: "你是否享受在陌生人面前展示自我（如演讲、表演）？", options: [{ text: "非常享受，喜欢被关注。", score: { B: 4, C: 2 } }, { text: "如果主题是我擅长的，我会很自信。", score: { D: 3, B: 3 } }, { text: "有些紧张，但可以应对。", score: { E: 2 } }, { text: "倾向于幕后，不喜欢被关注。", score: { A: 3, D: 4 } }] },
+            { text: "你更倾向于做哪种类型的分享者？", options: [{ text: "传授知识，帮助他人提升技能。", score: { D: 4, A: 3 } }, { text: "分享生活，记录美好日常。", score: { C: 3, B: 3 } }, { text: "提供娱乐，让人感到轻松快乐。", score: { B: 4, C: 2 } }, { text: "拆解项目，教人如何赚钱或变现。", score: { E: 4, A: 3 } }] },
+            { text: "你认为你的时间管理能力是？", options: [{ text: "非常出色，能严格遵守计划。", score: { E: 4, A: 3 } }, { text: "一般，需要外部监督或激励。", score: { B: 2 } }, { text: "不喜欢计划，更喜欢灵活应对。", score: { C: 3 } }, { text: "能规划，但执行过程中常有拖延。", score: { A: 3, E: 1 } }] },
+            { text: "你认为什么能让你获得最大的成就感？", options: [{ text: "通过思考，解决了一个逻辑难题。", score: { A: 4, D: 3 } }, { text: "创造了一个新颖、有趣的创意作品。", score: { C: 4, B: 3 } }, { text: "帮助他人在现实中解决了问题。", score: { D: 4, E: 3 } }, { text: "获得大量观众的喜欢和共鸣。", score: { B: 4, C: 2 } }] },
+            { text: "你更愿意投入时间和金钱在哪方面？", options: [{ text: "学习专业知识和课程。", score: { D: 4, A: 3 } }, { text: "购买更好的设备（相机、电脑等）。", score: { C: 4, E: 3 } }, { text: "社交和维护人脉关系。", score: { B: 3, E: 2 } }, { text: "制定详细的商业计划。", score: { A: 4, E: 4 } }] },
+            
+            // 经验履历与人群定位 (15题)
+            { text: "你的最高学历（或目前学习阶段）是？", options: [{ text: "本科及以上（或在读）。", score: { D: 3, A: 2 } }, { text: "大专/职业技术学院（或在读）。", score: { D: 2, E: 2 } }, { text: "高中/中专及以下（或在读）。", score: { B: 2, E: 3 } }, { text: "我通过自学掌握了许多专业技能。", score: { D: 4, A: 4 } }] },
+            { text: "你是否有任何全职或兼职工作经验？", options: [{ text: "有，长期在某一专业领域工作。", score: { D: 4, E: 3 } }, { text: "有，但工作内容多样，涉及多个领域。", score: { A: 3, B: 3 } }, { text: "没有，我主要在校或刚毕业。", score: { D: 2, E: 1 } }, { text: "我主要通过自雇/自由职业积累经验。", score: { C: 3, E: 4 } }] },
+            { text: "你拥有的或正在积累的，最核心的技能是？", options: [{ text: "专业理论知识或技术（如编程、金融）。", score: { D: 4, A: 3 } }, { text: "艺术创作或设计技能（如绘画、剪辑）。", score: { C: 4, B: 3 } }, { text: "与人打交道、销售或沟通能力。", score: { B: 4, E: 3 } }, { text: "流程管理、效率优化或执行操作。", score: { E: 4, A: 4 } }] },
+            { text: "你目前的生活状态最接近以下哪种？", options: [{ text: "职场白领或专业技术人员。", score: { D: 4, E: 3 } }, { text: "学生或处于探索阶段的年轻人。", score: { C: 3, B: 3 } }, { text: "自由职业者或独立创业者。", score: { E: 4, A: 4 } }, { text: "家庭主妇或生活体验丰富的人。", score: { B: 3, C: 3 } }] },
+            { text: "你目前最常使用的自媒体平台是哪个？", options: [{ text: "知乎、B站、公众号等中长文/学习类平台。", score: { D: 3, A: 3 } }, { text: "抖音、快手等短视频娱乐平台。", score: { B: 4, C: 3 } }, { text: "小红书、微博等图文/社交平台。", score: { C: 3, B: 3 } }, { text: "以上都用，但主要用于获取资讯。", score: { A: 3, D: 3 } }] },
+            { text: "你过去是否有过“社群”或“圈子”的运营经验？", options: [{ text: "有，我曾组织或管理过粉丝群/兴趣群。", score: { B: 4, E: 3 } }, { text: "有过，但只是在其中担任普通成员。", score: { B: 2 } }, { text: "没有，我更喜欢独来独往。", score: { A: 4, D: 4 } }, { text: "我擅长建立关系，但不擅长管理。", score: { C: 3 } }] },
+            { text: "你最想通过自媒体解决以下哪个问题？", options: [{ text: "实现知识变现，成为领域内专家。", score: { D: 4, A: 3 } }, { text: "扩大影响力，找到志同道合的圈子。", score: { B: 4, C: 3 } }, { text: "将现有技能或产品进行商业推广。", score: { E: 4, A: 4 } }, { text: "记录生活，实现自我价值的表达。", score: { C: 3, B: 3 } }] },
+            { text: "你更希望你的内容受众是哪一类群体？", options: [{ text: "高学历、高收入的知识分子或职场精英。", score: { D: 4, A: 4 } }, { text: "追求时尚、注重生活品质的年轻人。", score: { C: 4, B: 3 } }, { text: "对娱乐和新鲜事物充满好奇的大众群体。", score: { B: 4, C: 3 } }, { text: "渴望提升效率、解决实际问题的实干家。", score: { E: 4, A: 3 } }] },
+            { text: "你对目前所在行业的了解深度是？", options: [{ text: "非常了解，能提供独家洞察和分析。", score: { D: 4, A: 3 } }, { text: "比较熟悉，能分享经验和基础知识。", score: { D: 3, E: 2 } }, { text: "一般，我的知识主要来自兴趣。", score: { C: 3, B: 3 } }, { text: "不了解，我打算跨行/跨界。", score: { A: 2, B: 2 } }] },
+            { text: "你对“镜头感”的适应程度是？", options: [{ text: "非常自然，甚至享受被拍摄。", score: { B: 4, C: 3 } }, { text: "可以接受，但需要提前准备。", score: { B: 3, E: 3 } }, { text: "不太适应，更喜欢录制屏幕或声音。", score: { D: 4, A: 4 } }, { text: "完全抗拒，宁愿只做幕后。", score: { E: 4, A: 4 } }] },
+            { text: "你认为以下哪个主题更容易让你持续产生创作热情？", options: [{ text: "分享你长期钻研的专业知识。", score: { D: 4, A: 3 } }, { text: "记录你的有趣生活和体验。", score: { B: 3, C: 4 } }, { text: "拆解成功商业案例和赚钱方法。", score: { E: 4, A: 4 } }, { text: "展示你的艺术才华或动手能力。", score: { C: 4, B: 4 } }] },
+            { text: "你在进行内容制作时，更看重：", options: [{ text: "内容的知识密度和深度。", score: { D: 4, A: 3 } }, { text: "视觉效果和画面美感。", score: { C: 4, B: 2 } }, { text: "能否引起共鸣和广泛传播。", score: { B: 4, E: 3 } }, { text: "制作效率和低成本。", score: { E: 4, A: 3 } }] },
+            { text: "你对粉丝互动和社区运营的态度是？", options: [{ text: "非常积极，主动建立社群和维护关系。", score: { B: 4, E: 3 } }, { text: "只回复有价值的评论和提问。", score: { D: 3, A: 3 } }, { text: "有需要就互动，但精力主要在内容。", score: { C: 3, D: 3 } }, { text: "交给工具或团队，我更喜欢独创。", score: { A: 4, D: 4 } }] },
+            { text: "你是否有任何可以作为自媒体内容的“个人独家资源”？", options: [{ text: "有，如独家行业数据、内部经验、小众技能。", score: { D: 4, A: 3 } }, { text: "有，如高颜值、独特的穿搭品味、生活方式。", score: { C: 4, B: 3 } }, { text: "有，如丰富的人脉资源、合作渠道。", score: { B: 4, E: 3 } }, { text: "没有特别的，我打算从零开始。", score: { E: 4, A: 3 } }] },
+            { text: "你认为你的内容最大的优势是？", options: [{ text: "逻辑严谨，能提供系统化解决方案。", score: { A: 4, D: 4 } }, { text: "有感染力，能让人感到快乐或被治愈。", score: { B: 4, C: 3 } }, { text: "制作精美，画面感强。", score: { C: 4, B: 3 } }, { text: "非常实用，能直接指导用户行动。", score: { E: 4, D: 3 } }] },
+
+            // 深度驱动与变现意愿 (15题)
+            { text: "你对“变现”的紧迫程度是？", options: [{ text: "非常紧迫，希望尽快获得收入。", score: { E: 4, A: 4 } }, { text: "中等，先积累一定粉丝和影响力。", score: { D: 3, E: 2 } }, { text: "不紧迫，先以兴趣和价值为主。", score: { B: 3, C: 3 } }, { text: "变现是长期目标，初期专注内容质量。", score: { D: 4, A: 3 } }] },
+            { text: "如果让你分享一个失败经验，你会重点强调什么？", options: [{ text: "总结经验教训和理论模型。", score: { D: 4, A: 4 } }, { text: "幽默地讲述过程，将失败变成段子。", score: { B: 4, C: 3 } }, { text: "自己如何坚持和克服困难的过程。", score: { E: 4, B: 3 } }, { text: "失败背后的深层行业原因。", score: { A: 3, D: 3 } }] },
+            { text: "你对热点事件的态度是？", options: [{ text: "理性分析，深挖热点背后的本质。", score: { A: 4, D: 4 } }, { text: "快速跟进，用自己的方式进行趣味解读。", score: { B: 4, C: 3 } }, { text: "只追与自己领域强相关的热点。", score: { D: 3, E: 3 } }, { text: "不追热点，只做长青内容。", score: { D: 4, E: 4 } }] },
+            { text: "你认为自媒体最大的风险是？", options: [{ text: "花费大量精力，但无法变现。", score: { E: 4, A: 4 } }, { text: "创意枯竭，内容无法持续创新。", score: { C: 4, B: 4 } }, { text: "数据造假，影响专业口碑。", score: { D: 4, A: 3 } }, { text: "遇到负面舆论或被攻击。", score: { B: 3, E: 3 } }] },
+            { text: "你对视频、图片制作软件（如剪映、PS）的学习意愿是？", options: [{ text: "非常高，乐于投入时间学习复杂功能。", score: { C: 4, E: 4 } }, { text: "中等，能满足基本制作需求即可。", score: { B: 3, E: 3 } }, { text: "低，倾向于找人合作或使用简单工具。", score: { A: 4, D: 4 } }, { text: "我只关注内容，制作是次要的。", score: { D: 4, A: 4 } }] },
+            { text: "你更愿意以什么身份出现在大众面前？", options: [{ text: "传道者/导师（知识输出）。", score: { D: 4, A: 4 } }, { text: "朋友/生活家（亲和力输出）。", score: { B: 4, C: 3 } }, { text: "实干家/效率专家（方法输出）。", score: { E: 4, A: 4 } }, { text: "艺术家/表演者（创意输出）。", score: { C: 4, B: 4 } }] },
+            { text: "如果你的内容不被市场接受，你会怎么做？", options: [{ text: "理性分析数据，调整内容结构和选题。", score: { A: 4, D: 4 } }, { text: "坚持自我风格，相信总有人欣赏。", score: { C: 4, B: 3 } }, { text: "立刻停止，快速尝试新的赛道或方向。", score: { E: 4, B: 4 } }, { text: "寻求导师或专家的帮助进行诊断。", score: { D: 3, A: 3 } }] },
+            { text: "你对“系统化”和“结构化”的偏好程度是？", options: [{ text: "极高，所有信息都必须有体系。", score: { A: 4, D: 4 } }, { text: "中等，能有体系最好，没有也无妨。", score: { E: 3, B: 2 } }, { text: "较低，更喜欢碎片化和即时性的灵感。", score: { C: 4, B: 4 } }, { text: "我只对我的专业领域要求系统化。", score: { D: 4, E: 4 } }] },
+            { text: "你认为你的粉丝付费的最大理由是？", options: [{ text: "我的知识解决了他们工作或生活中的大难题。", score: { D: 4, A: 4 } }, { text: "我的个人魅力和风格让他们愿意为爱买单。", score: { B: 4, C: 3 } }, { text: "我的产品能帮他们省钱或赚到钱。", score: { E: 4, A: 4 } }, { text: "我的内容让他们感到愉悦或审美满足。", score: { C: 4, B: 3 } }] },
+            { text: "你在进行内容制作时，是否会主动研究竞争对手？", options: [{ text: "会，定期进行竞品分析，寻找差异化。", score: { A: 4, E: 3 } }, { text: "只看头部大号，学习其成功经验。", score: { D: 3, B: 3 } }, { text: "偶尔看看，但主要还是靠自己灵感。", score: { C: 3 } }, { text: "很少，更相信垂直深耕的力量。", score: { D: 4, E: 4 } }] },
+            { text: "你对数字营销、流量算法的了解程度是？", options: [{ text: "非常了解，知道如何利用算法。", score: { A: 4, E: 4 } }, { text: "一般，只知道基础的规则。", score: { E: 3, D: 3 } }, { text: "不太了解，但愿意学习。", score: { A: 3, D: 3 } }, { text: "不了解，更关注内容带来的自然流量。", score: { B: 3, C: 3 } }] },
+            { text: "你更希望你的内容被称为：", options: [{ text: "深度、洞察、知识密集型。", score: { D: 4, A: 4 } }, { text: "温暖、治愈、亲切有趣。", score: { B: 4, C: 3 } }, { text: "实战、高效、快速落地。", score: { E: 4, A: 4 } }, { text: "惊艳、新颖、创意十足。", score: { C: 4, B: 4 } }] },
+            { text: "你对自媒体的长期目标是？", options: [{ text: "将IP打造成个人品牌，拥有高价值社群。", score: { D: 4, A: 4 } }, { text: "实现流量自由，拥有多种被动收入。", score: { E: 4, A: 4 } }, { text: "成为某一细分领域的意见领袖（KOL）。", score: { B: 4, D: 3 } }, { text: "通过作品享受创作过程，实现自我表达。", score: { C: 4, B: 3 } }] },
+            { text: "你在内容创作的投入上，最不能接受的是？", options: [{ text: "投入时间但内容被指责不专业。", score: { D: 4, A: 4 } }, { text: "投入金钱但画面或制作效果很差。", score: { C: 4, E: 4 } }, { text: "投入精力但内容无人观看。", score: { B: 4, E: 4 } }, { text: "为了迎合市场而改变自己的创作风格。", score: { C: 4, B: 4 } }] },
+            { text: "你对“人设”的看法是？", options: [{ text: "人设需要精心策划，是商业策略的一部分。", score: { A: 4, E: 4 } }, { text: "保持真实，但要突出核心优势。", score: { D: 3, B: 3 } }, { text: "无所谓，内容有趣最重要。", score: { B: 4, C: 4 } }, { text: "人设应完全服务于专业度或知识性。", score: { D: 4, A: 4 } }] },
+
+            // 补充题 (10题)
+            { text: "你更喜欢以什么为起点进行创作？", options: [{ text: "一个复杂的问题或需要拆解的理论。", score: { A: 4, D: 4 } }, { text: "一个有趣的经历或一个打动你的故事。", score: { B: 4, C: 3 } }, { text: "一个高效的工具或一个实用的小技巧。", score: { E: 4, A: 3 } }, { text: "一个精美的视觉素材或一段音乐。", score: { C: 4, B: 3 } }] },
+            { text: "你对小众、垂直领域的兴趣程度是？", options: [{ text: "非常高，喜欢深耕细分领域。", score: { D: 4, A: 4 } }, { text: "一般，更喜欢大众热门话题。", score: { B: 3, C: 3 } }, { text: "只在能带来价值时才关注。", score: { E: 4, D: 3 } }, { text: "我的兴趣很广，难以局限于小众。", score: { C: 3, B: 3 } }] },
+            { text: "你的朋友最常向你咨询哪方面的问题？", options: [{ text: "关于学习、职业规划、人生选择。", score: { D: 4, A: 4 } }, { text: "关于穿搭、旅游、娱乐八卦。", score: { C: 4, B: 3 } }, { text: "关于效率、工具、如何解决某个实际困难。", score: { E: 4, A: 4 } }, { text: "关于情绪、人际关系、心理困惑。", score: { B: 4, D: 3 } }] },
+            { text: "你更愿意与哪种类型的粉丝互动？", options: [{ text: "喜欢学习、提出深度问题的粉丝。", score: { D: 4, A: 4 } }, { text: "热情追随、注重情感连接的粉丝。", score: { B: 4, C: 3 } }, { text: "积极参与、爱玩梗的粉丝。", score: { C: 4, B: 4 } }, { text: "能提供专业反馈和合作机会的粉丝。", score: { E: 4, D: 3 } }] },
+            { text: "你对自己的学习速度满意吗？", options: [{ text: "非常满意，能快速掌握新知识。", score: { D: 4, A: 4 } }, { text: "一般，需要大量练习才能掌握。", score: { E: 3, A: 3 } }, { text: "我擅长深挖，但不擅长泛学。", score: { D: 4, E: 3 } }, { text: "我的学习效率取决于我是否喜欢。", score: { B: 3, C: 3 } }] },
+            { text: "你认为什么能让你坚持创作下去？", options: [{ text: "看到自己的知识体系不断完善。", score: { D: 4, A: 4 } }, { text: "创作过程本身的乐趣和表达欲。", score: { C: 4, B: 4 } }, { text: "创作带来的收入和影响力。", score: { E: 4, A: 4 } }, { text: "粉丝的反馈和情感支持。", score: { B: 4, C: 3 } }] },
+            { text: "你在进行内容制作时，最容易遇到的困难是？", options: [{ text: "选题策划和结构搭建。", score: { A: 4, D: 4 } }, { text: "克服镜头恐惧或口才表达。", score: { B: 4, E: 3 } }, { text: "视觉素材和后期制作。", score: { C: 4, E: 3 } }, { text: "坚持日更或周更的自律性。", score: { E: 4, A: 4 } }] },
+            { text: "你对内容变现的偏好是？", options: [{ text: "知识付费、高客单价服务。", score: { D: 4, A: 4 } }, { text: "广告植入、品牌合作。", score: { B: 4, C: 4 } }, { text: "电商带货、性价比商品推荐。", score: { E: 4, A: 3 } }, { text: "直播打赏、靠内容吸引赞助。", score: { B: 4, C: 3 } }] },
+            { text: "你对使用AI工具来辅助创作的态度是？", options: [{ text: "积极拥抱，能提高效率和质量。", score: { E: 4, A: 4 } }, { text: "谨慎使用，担心影响内容的真实性和原创性。", score: { D: 4, C: 4 } }, { text: "无所谓，我更依赖于自己的大脑。", score: { D: 3, B: 3 } }, { text: "如果能提高创意，会尝试。", score: { C: 4, B: 3 } }] },
+            { text: "你更喜欢以什么为目标进行学习？", options: [{ text: "成为某一领域的大师。", score: { D: 4, A: 4 } }, { text: "学会新的创作和表达形式。", score: { C: 4, B: 4 } }, { text: "提升效率，更好地管理工作和生活。", score: { E: 4, A: 4 } }, { text: "增加人脉和社交技能。", score: { B: 4, E: 3 } }] },
+        ];
+        
+        // 赛道分类 (保持不变)
+        const tracks = {
+            'Knowledge': { name: "🚀 知识付费/深度教育赛道", focus: "理性分析、专业深度、系统化", abilities: ['D', 'A', 'E'], persona: "严谨的学者、耐心的导师、行业分析师", rivals: ["李永乐老师", "半佛仙人", "秋叶PPT"], analysis: ["该赛道以<strong>高价值内容</strong>驱动，用户付费意愿强，但门槛高，需要持续学习和极强的逻辑体系。", "竞争主要集中在知识的**权威性**和**系统性**。", "<strong>核心策略：</strong>深耕细分领域，通过系列化、结构化的内容输出建立**专家人设**和**知识壁垒**."] },
+            'Lifestyle': { name: "💖 亲和力/生活美学赛道", focus: "情感共鸣、高颜值、亲切互动", abilities: ['B', 'C', 'E'], persona: "邻家朋友、生活家、穿搭博主、美食达人", rivals: ["大嘴妹", "多肉", "小小莎老师"], analysis: ["该赛道以<strong>人设</strong>和<strong>审美</strong>驱动，易于快速积累粉丝，变现路径多样（广告、带货）。", "竞争激烈，内容同质化严重，需要持续的<strong>创意和亲和力</strong>来维护高粘度社群。", "<strong>核心策略：</strong>稳定输出**高品质视觉内容**，通过**真实、亲和的Vlog**建立强情感连接，快速尝试短视频种草。"] },
+            'Creativity': { name: "💡 创意/娱乐才艺赛道", focus: "新奇有趣、表演天赋、病毒式传播", abilities: ['C', 'B', 'A'], persona: "喜剧人、才艺表演者、创意策划师、野生艺术家", rivals: ["手工耿", "papi酱", "李子柒 (内容创意和制作顶尖)"], analysis: ["该赛道以<strong>创意</strong>和<strong>天赋</strong>驱动，内容容易突破圈层，实现爆发式传播。", "对**灵感持续性**要求极高，变现模式不稳定（多依赖广告和直播）。", "<strong>核心策略：：</strong>坚持**内容差异化**，利用表演天赋和剪辑能力，制作**强视觉冲击、反转**的短视频，以内容引爆流量。"] },
+            'Business': { name: "💰 商业实战/效率变现赛道", focus: "实用落地、高效执行、结果导向", abilities: ['E', 'A', 'D'], persona: "效率黑客、赚钱项目拆解师、职场实战专家", rivals: ["秋招求职", "张琦", "老张聊创业"], analysis: ["该赛道强调<strong>实用性和商业价值</strong>，粉丝变现效率极高，多以中高客单价课程或服务为主。", "要求创作者具备**极强的执行力、商业敏感度**和**清晰的变现路径**。", "<strong>核心策略：：</strong>输出**可落地、结果导向**的干货，用数据和案例构建信任，直接以**解决痛点**为导向进行内容设计。"] }
+        };
+
+
+        // --- 激活码验证函数 ---
+        function checkActivationCode() {
+            const code = codeInput.value.trim();
+            codeError.textContent = '';
+            if (code === ACTIVATION_CODE) {
+                startQuiz();
+            } else {
+                codeError.textContent = '激活码错误，请重新输入或联系管理员。';
+                codeInput.value = ''; 
+            }
+        }
+
+        // --- 初始化测试函数 ---
+        function startQuiz() {
+            currentQuestionIndex = 0;
+            userAnswers = [];
+            
+            // 切换页面显示状态
+            startScreen.classList.add('hidden');
+            resultSection.classList.add('hidden');
+            quizHeader.classList.remove('hidden'); 
+            quizSection.classList.remove('hidden'); 
+
+            renderQuestion(currentQuestionIndex);
+        }
+
+        // --- 重新测试逻辑：返回开始页 ---
+        function resetToStart() {
+            quizHeader.classList.add('hidden');
+            resultSection.classList.add('hidden');
+            startScreen.classList.remove('hidden');
+            codeError.textContent = '';
+            codeInput.value = '';
+        }
+
+        // --- 题目渲染函数 (保持自动跳转逻辑) ---
+        function renderQuestion(index) {
+            if (index >= TOTAL_QUESTIONS) {
+                calculateResult(); 
+                return;
+            }
+
+            const q = questions[index];
+            quizSection.innerHTML = '';
+            quizSection.classList.remove('hidden');
+
+            const qNum = document.createElement('div');
+            qNum.className = 'question-number';
+            qNum.textContent = `第 ${index + 1} / ${TOTAL_QUESTIONS} 题`;
+
+            const qText = document.createElement('div');
+            qText.className = 'question-text';
+            qText.textContent = q.text;
+
+            const optionsList = document.createElement('ul');
+            optionsList.className = 'options-list';
+            const existingAnswer = userAnswers.find(a => a.qIndex === index);
+
+            q.options.forEach((opt, optIndex) => {
+                const item = document.createElement('li');
+                item.className = 'option-item';
+                item.textContent = `${String.fromCharCode(65 + optIndex)}. ${opt.text}`;
+                
+                item.addEventListener('click', () => {
+                    selectAnswer(index, optIndex, opt.score, item);
+                    setTimeout(() => {
+                        if (currentQuestionIndex < TOTAL_QUESTIONS - 1) {
+                            nextQuestion();
+                        } else {
+                            calculateResult();
+                        }
+                    }, 100); 
+                });
+
+                if (existingAnswer && existingAnswer.optionIndex === optIndex) {
+                    item.classList.add('selected');
+                }
+                optionsList.appendChild(item);
+            });
+
+            quizSection.appendChild(qNum);
+            quizSection.appendChild(qText);
+            quizSection.appendChild(optionsList);
+            updateProgress();
+        }
+
+        function selectAnswer(qIndex, optIndex, score, selectedElement) {
+            Array.from(selectedElement.parentNode.children).forEach(el => el.classList.remove('selected'));
+            selectedElement.classList.add('selected');
+
+            const newAnswer = { qIndex: qIndex, optionIndex: optIndex, score: score };
+            const existingIndex = userAnswers.findIndex(a => a.qIndex === qIndex);
+            
+            if (existingIndex > -1) {
+                userAnswers[existingIndex] = newAnswer;
+            } else {
+                userAnswers.push(newAnswer);
+            }
+        }
+        
+        function updateProgress() { 
+            const percent = ((currentQuestionIndex + 1) / TOTAL_QUESTIONS) * 100;
+            document.getElementById('progressBar').style.width = `${percent}%`;
+        }
+
+        function nextQuestion() {
+            if (currentQuestionIndex < TOTAL_QUESTIONS - 1) {
+                currentQuestionIndex++;
+                renderQuestion(currentQuestionIndex);
+            }
+        }
+
+        // --- 结果计算与展示函数 ---
+        function calculateResult() {
+            if (userAnswers.length !== TOTAL_QUESTIONS) {
+                alert("请完成所有题目！");
+                return;
+            }
+
+            const finalScores = { A: 0, B: 0, C: 0, D: 0, E: 0 };
+            const trackScores = { Knowledge: 0, Lifestyle: 0, Creativity: 0, Business: 0 };
+
+            userAnswers.forEach(answer => {
+                const score = answer.score;
+                for (const key in score) {
+                    if (finalScores.hasOwnProperty(key)) {
+                        finalScores[key] += score[key];
+                    }
+                }
+            });
+
+            // 计算赛道得分 (权重保持不变)
+            trackScores.Knowledge = finalScores.D * 0.4 + finalScores.A * 0.3 + finalScores.E * 0.3;
+            trackScores.Lifestyle = finalScores.B * 0.4 + finalScores.C * 0.3 + finalScores.E * 0.3;
+            trackScores.Creativity = finalScores.C * 0.4 + finalScores.B * 0.3 + finalScores.A * 0.3;
+            trackScores.Business = finalScores.E * 0.4 + finalScores.A * 0.3 + finalScores.D * 0.3;
+
+            let maxTrackScore = -1;
+            let topTrackKey = '';
+            for (const key in trackScores) {
+                if (trackScores[key] > maxTrackScore) {
+                    maxTrackScore = trackScores[key];
+                    topTrackKey = key;
+                }
+            }
+
+            displayResult(topTrackKey, finalScores);
+        }
+        
+        // --- 雷达图绘制函数 (保持不变) ---
+        function drawRadarChart(scores) {
+            const maxScorePossible = 50 * 4; 
+            const abilityData = Object.values(scores).map(value => Math.round((value / maxScorePossible) * 100));
+            const labels = Object.values(abilityLabels);
+
+            const ctx = document.getElementById('myRadarChart').getContext('2d');
+            
+            if (myRadarChart) myRadarChart.destroy();
+
+            myRadarChart = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '你的能力倾向',
+                        data: abilityData,
+                        backgroundColor: 'rgba(240, 98, 146, 0.2)',
+                        borderColor: varColor('primary-color'),
+                        borderWidth: 2,
+                        pointBackgroundColor: varColor('primary-color')
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            angleLines: { display: true },
+                            suggestedMin: 0,
+                            suggestedMax: 80, 
+                            pointLabels: { font: { size: 14 } },
+                            ticks: { display: false }
+                        }
+                    },
+                    plugins: { 
+                        legend: { display: false }, 
+                        tooltip: { 
+                            callbacks: { 
+                                label: (context) => `${context.label}: ${context.raw}%` 
+                            } 
+                        } 
+                    }
+                }
+            });
+        }
+        
+        function varColor(name) {
+            return getComputedStyle(document.documentElement).getPropertyValue(`--${name}`).trim();
+        }
+
+        function getReportHTML(trackKey, finalScores) {
+            const track = tracks[trackKey];
+            const sortedAbilities = Object.entries(finalScores)
+                .sort(([, a], [, b]) => b - a)
+                .map(([key, score]) => ({ label: abilityLabels[key], score }));
+
+            const maxScorePossible = 50 * 4; 
+            const getPercent = (score) => Math.round((score / maxScorePossible) * 100);
+
+            let contentHTML = '';
+
+            // --- 板块一：用户能力和天赋分析 (H3 精简) ---
+            contentHTML += `
+                <div class="report-section">
+                    <h3>✅ 板块一：天赋诊断</h3>
+                    <h4>核心能力雷达图：</h4>
+                    <div id="radarChartContainer">
+                        <canvas id="myRadarChart"></canvas>
+                    </div>
+                    <h4>能力总结：</h4>
+                    <ul class="result-list">
+                        <li><strong>主导天赋：</strong>${sortedAbilities[0].label} (得分 ${getPercent(sortedAbilities[0].score)}%)。这代表你最强的底层驱动力，应作为内容创作的核心卖点。</li>
+                        <li><strong>辅助能力：：</strong>${sortedAbilities[1].label} (得分 ${getPercent(sortedAbilities[1].score)}%) 和 ${sortedAbilities[2].label} (得分 ${getPercent(sortedAbilities[2].score)}%)。这些能力可以帮你实现内容差异化和高效产出。</li>
+                        <li><strong>诊断结论：</strong>你的天赋结构最适合打造<strong>${track.name}</strong>的个人IP，建议将你的<strong>${track.focus}</strong>能力发挥到极致。</li>
+                    </ul>
+                </div>
+            `;
+            
+            // --- 板块二：自媒体赛道建议 (H3/H4 精简) ---
+            const [analysis1, analysis2, analysis3] = track.analysis; 
+            contentHTML += `
+                <div class="report-section">
+                    <h3>💡 板块二：赛道与对标</h3>
+                    <h4>最佳赛道：${track.name}</h4>
+                    <p><strong>建议人设：</strong>${track.persona}。这个定位将最大化利用你的<strong>${track.abilities.map(k => abilityLabels[k]).join('、')}</strong>优势。</p>
+                    
+                    <h4>赛道现况分析：</h4>
+                    <ul class="result-list">
+                        <li><strong>赛道门槛：</strong>${analysis1}</li>
+                        <li><strong>竞争态势：：</strong>${analysis2}</li>
+                        <li><strong>核心策略：：</strong>${analysis3}</li>
+                    </ul>
+                    
+                    <h4>对标账号：</h4>
+                    <ul class="result-list">
+                        ${track.rivals.map(r => `<li><strong>${r}</strong> (搜索该账号，学习其选题逻辑、内容结构和互动方式)</li>`).join('')}
+                    </ul>
+                </div>
+            `;
+            
+            // --- 板块三：账号运营规划 (H3 精简) ---
+            contentHTML += `
+                <div class="report-section">
+                    <h3>💰 板块三：运营规划</h3>
+                    <h4>核心执行方式：</h4>
+                    <p>利用你的<strong>${abilityLabels[sortedAbilities[0].label]}</strong>天赋，确保内容的<strong>${track.focus.split('、')[0]}</strong>，同时克服<strong>${sortedAbilities[4].label}</strong>的短板（如需）。</p>
+                    
+                    ${renderPlanCard('前期（0-1000粉）', '1-3个月', 
+                        `<strong>内容验证：</strong>专注于${getExampleTopic(trackKey).pre}。高频发布，快速测试用户反馈。`, 
+                        `无，或<strong>私域预热</strong>（如：免费资料引流）。`
+                    )}
+                    ${renderPlanCard('中期（1000-10万粉）', '4-12个月', 
+                        `<strong>打造爆款：：</strong>深耕${getExampleTopic(trackKey).mid}。开始固定人设，形成稳定创作节奏。`, 
+                        `${getMonetization(trackKey).basic}。`
+                    )}
+                    ${renderPlanCard('后期（10万+粉）', '1年以上', 
+                        `<strong>品牌升级：：</strong>进行${getExampleTopic(trackKey).post}。孵化社群，开展IP多平台布局。`, 
+                        `${getMonetization(trackKey).advanced}。`
+                    )}
+
+                    <h4>成本分析：</h4>
+                    <ul class="result-list">
+                        <li><strong>核心投入：：</strong>${getCostAnalysis(trackKey).focus}</li>
+                        <li><strong>时间成本：</strong>初期建议每天投入<strong>${getCostAnalysis(trackKey).time}</strong>小时用于内容制作和学习。</li>
+                        <li><strong>设备建议：：</strong>初期可使用手机和补光灯，专业设备可等到变现后再投入。</li>
+                    </ul>
+                </div>
+            `;
+
+            return contentHTML;
+        }
+
+        // --- 卡片渲染函数 (保持不变) ---
+        function renderPlanCard(title, cycle, execution, monetization) {
+            return `
+                <div class="plan-card">
+                    <h5>${title}</h5>
+                    <div class="plan-detail">
+                        <strong>目标周期</strong>
+                        <p>${cycle}</p>
+                    </div>
+                    <div class="plan-detail">
+                        <strong>执行方式/选题举例</strong>
+                        <p>${execution}</p>
+                    </div>
+                    <div class="plan-detail">
+                        <strong>变现方式</strong>
+                        <p>${monetization}</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- 详细方案生成函数（保持不变） ---
+        function getExampleTopic(key) {
+            switch (key) {
+                case 'Knowledge': return { pre: "一个概念的深度解读、一个工具的专业使用教程。", mid: "系列课程的免费试听章节、行业分析与趋势预测。", post: "高端访谈、付费私董会案例拆解、年度行业白皮书。" };
+                case 'Lifestyle': return { pre: "沉浸式Vlog、每日穿搭技巧、高性价比好物分享。", mid: "跨城市探店Vlog、与品牌联名深度测评、家居改造系列。", post: "个人IP品牌周边、高端生活方式体验活动、粉丝见面会。" };
+                case 'Creativity': return { pre: "用一个新梗做二次创作、15秒反转小剧场、手绘/歌曲挑战。", mid: "创作系列IP角色短剧、每周一个视觉/才艺挑战、深度创意拆解教程。", post: "品牌创意广告定制、电影/游戏配音配乐合作、个人艺术作品展。" };
+                case 'Business': return { pre: "一个赚钱小项目的实操步骤、一个高效工具的使用教程。", mid: "月度收入拆解报告、职场干货系列（如PPT/Excel）、付费社群引流课程。", post: "企业内训服务、高客单价商业咨询、自研商业工具或模板销售。" };
+            }
+        }
+        
+        function getMonetization(key) {
+            switch (key) {
+                case 'Knowledge': return { basic: "付费专栏、知识星球（社群）", advanced: "高客单价训练营、企业内训、1V1咨询" };
+                case 'Lifestyle': return { basic: "电商带货（橱窗）、低客单价品牌植入", advanced: "深度品牌合作（代言）、个人品牌联名、线下体验店引流" };
+                case 'Creativity': return { basic: "平台打赏、流量激励、创意定制小订单", advanced: "中高端品牌创意广告合作、IP授权、衍生品开发" };
+                case 'Business': return { basic: "付费模板/工具销售、中低价位线上课程", advanced: "高客单价私董会、创业项目孵化、商业服务外包" };
+            }
+        }
+
+        function getCostAnalysis(key) {
+             switch (key) {
+                case 'Knowledge': return { focus: "时间（研究、学习）、知识付费。", time: "3-4" };
+                case 'Lifestyle': return { focus: "形象（服饰、化妆）、场景搭建、拍摄设备。", time: "2-3" };
+                case 'Creativity': return { focus: "时间（创意构思）、后期制作软件、道具。", time: "4-5" };
+                case 'Business': return { focus: "时间（实践、数据分析）、测试成本、行业报告。", time: "3-5" };
+            }
+        }
+
+
+        function displayResult(topTrackKey, finalScores) {
+            quizSection.classList.add('hidden');
+            quizHeader.classList.add('hidden'); 
+            resultSection.classList.remove('hidden');
+            trackSuggestion.innerHTML = getReportHTML(topTrackKey, finalScores);
+            
+            setTimeout(() => {
+                drawRadarChart(finalScores);
+            }, 50);
+        }
+
+        // 页面加载完成后自动显示开始页面
+        window.onload = function() {
+            codeInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    checkActivationCode();
+                }
+            });
+        };
+    </script>
+</body>
+</html>
