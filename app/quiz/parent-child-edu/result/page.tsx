@@ -1,18 +1,15 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
-import { Suspense, useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
-  FinalScores,
-  TrackScores,
-  TrackType,
-  abilityLabels,
-  tracks,
-  buildReportData,
-  mediaTalentQuiz,
-} from "@/data/quizzes/mediaTalent";
-import { savePaidStatus } from "@/utils/storage";
+  DimensionScores,
+  eduTypes,
+  dimensionLabels,
+  questionBank,
+  AgeGroup,
+} from "@/data/quizzes/parentChildEdu";
+import { getPaidStatus } from "@/utils/storage";
 
 function isMobileDevice(): boolean {
   if (typeof window === "undefined") return false;
@@ -23,10 +20,11 @@ function isMobileDevice(): boolean {
 interface PaymentModalProps {
   isOpen: boolean;
   onClose: () => void;
-  topTrack: TrackType;
+  eduTypeName: string;
+  isTestMode: boolean;
 }
 
-function PaymentModal({ isOpen, onClose, topTrack }: PaymentModalProps) {
+function PaymentModal({ isOpen, onClose, eduTypeName, isTestMode }: PaymentModalProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [payUrl, setPayUrl] = useState<string | null>(null);
@@ -36,7 +34,16 @@ function PaymentModal({ isOpen, onClose, topTrack }: PaymentModalProps) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isOpen || !topTrack) return;
+    if (!isOpen) return;
+
+    // 如果是测试模式，跳过支付直接完成
+    if (isTestMode) {
+      setIsPaid(true);
+      setTimeout(() => {
+        window.location.href = "/payment/success";
+      }, 1500);
+      return;
+    }
 
     setIsLoading(true);
     setError(null);
@@ -49,7 +56,7 @@ function PaymentModal({ isOpen, onClose, topTrack }: PaymentModalProps) {
     fetch("/api/pay/create", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: topTrack }),
+      body: JSON.stringify({ type: "parent-child-edu" }),
     })
       .then((res) => res.json())
       .then((data) => {
@@ -86,7 +93,7 @@ function PaymentModal({ isOpen, onClose, topTrack }: PaymentModalProps) {
       })
       .catch(() => setError("网络错误"))
       .finally(() => setIsLoading(false));
-  }, [isOpen, topTrack]);
+  }, [isOpen, isTestMode]);
 
   useEffect(() => {
     if (!orderNo || !isPolling) return;
@@ -104,7 +111,12 @@ function PaymentModal({ isOpen, onClose, topTrack }: PaymentModalProps) {
           setIsPaid(true);
           setIsPolling(false);
           clearInterval(interval);
-          savePaidStatus("media-talent", topTrack);
+          // 保存支付成功状态（不是测试模式）
+          localStorage.setItem("mia_turing_lab_paid_parent-child-edu", JSON.stringify({
+            quizId: "parent-child-edu",
+            type: eduTypeName,
+            timestamp: Date.now()
+          }));
           setTimeout(() => {
             window.location.href = "/payment/success";
           }, 1500);
@@ -115,7 +127,7 @@ function PaymentModal({ isOpen, onClose, topTrack }: PaymentModalProps) {
     }, 2000);
 
     return () => clearInterval(interval);
-  }, [orderNo, isPolling, topTrack]);
+  }, [orderNo, isPolling, eduTypeName]);
 
   const startPolling = () => {
     setIsPolling(true);
@@ -143,11 +155,20 @@ function PaymentModal({ isOpen, onClose, topTrack }: PaymentModalProps) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
             </svg>
           </div>
-          <h2 className="text-xl font-bold text-purple-100 mb-2">解锁完整AI人格报告</h2>
-          <p className="text-zinc-400 text-sm">支付后可查看完整报告</p>
+          <h2 className="text-xl font-bold text-purple-100 mb-2">解锁完整教育指南</h2>
+          <p className="text-zinc-400 text-sm">
+            {isTestMode ? "测试期间可直接查看完整报告" : "支付后可查看完整报告"}
+          </p>
         </div>
 
-        {isLoading && (
+        {isTestMode && (
+          <div className="text-center py-8">
+            <p className="text-purple-400 font-semibold mb-2">测试放行中</p>
+            <p className="text-zinc-400 text-sm">24小时内可免费查看完整报告</p>
+          </div>
+        )}
+
+        {isLoading && !isTestMode && (
           <div className="text-center py-8">
             <div className="w-12 h-12 mx-auto mb-4 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" />
             <p className="text-zinc-400">正在创建订单...</p>
@@ -173,7 +194,7 @@ function PaymentModal({ isOpen, onClose, topTrack }: PaymentModalProps) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <p className="text-green-400 font-semibold">支付成功！</p>
+            <p className="text-green-400 font-semibold">处理完成！</p>
             <p className="text-zinc-400 text-sm mt-2">正在跳转...</p>
           </div>
         )}
@@ -206,7 +227,7 @@ function PaymentModal({ isOpen, onClose, topTrack }: PaymentModalProps) {
           </>
         )}
 
-        {!isLoading && !error && !qrCode && !isPaid && (
+        {!isLoading && !error && !qrCode && !isPaid && !isTestMode && (
           <div className="text-center">
             <p className="text-zinc-400 mb-4">正在准备支付...</p>
           </div>
@@ -216,69 +237,62 @@ function PaymentModal({ isOpen, onClose, topTrack }: PaymentModalProps) {
   );
 }
 
-interface ReportData {
-  topTrack: TrackType;
-  finalScores: FinalScores;
-  trackScores: TrackScores;
+interface ResultData {
+  dimScores: DimensionScores;
+  eduType: number;
+  age: string;
 }
 
-function ResultContent() {
+export default function ResultPage() {
+  const [resultData, setResultData] = useState<ResultData | null>(null);
+  const [isTestMode, setIsTestMode] = useState(false);
   const [showModal, setShowModal] = useState(false);
-  const [reportData, setReportData] = useState<ReportData | null>(null);
-  const searchParams = useSearchParams();
-  const answersParam = searchParams.get("answers");
 
   useEffect(() => {
-    // Try URL first, then localStorage
-    let answerIndices: number[] = [];
+    const dimScoresStr = localStorage.getItem("parent_child_edu_dimScores");
+    const eduTypeStr = localStorage.getItem("parent_child_edu_eduType");
+    const age = localStorage.getItem("parent_child_edu_age") || "3-5";
 
-    if (answersParam) {
-      answerIndices = answersParam.split(",").map(Number);
-    } else {
-      const stored = localStorage.getItem("media_talent_answers");
-      if (stored) {
-        try {
-          answerIndices = JSON.parse(stored);
-        } catch {
-          // ignore
-        }
-      }
+    if (!dimScoresStr || eduTypeStr === null) {
+      return;
     }
 
-    if (answerIndices.length === 0) return;
+    const dimScores: DimensionScores = JSON.parse(dimScoresStr);
+    const eduType = parseInt(eduTypeStr ?? "0", 10);
 
-    // Get stored scores if available
-    const storedScores = localStorage.getItem("media_talent_finalScores");
-    const storedTrack = localStorage.getItem("media_talent_topTrack");
-    const storedTrackScores = localStorage.getItem("media_talent_trackScores");
+    setResultData({ dimScores, eduType, age });
 
-    if (storedScores && storedTrack && storedTrackScores) {
-      setReportData({
-        finalScores: JSON.parse(storedScores),
-        topTrack: storedTrack as TrackType,
-        trackScores: JSON.parse(storedTrackScores),
-      });
-    } else {
-      // Recalculate from answers
-      const { finalScores, trackScores, topTrack } = require("@/data/quizzes/mediaTalent").processQuizResults(answerIndices);
-      setReportData({ finalScores, trackScores, topTrack });
+    // 检查是否是测试放行模式
+    const paidStatus = getPaidStatus("parent-child-edu");
+    if (paidStatus?.testMode) {
+      setIsTestMode(true);
     }
-  }, [answersParam]);
+  }, []);
 
-  if (!reportData) {
+  if (!resultData) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-purple-950 to-zinc-950 text-zinc-100 flex flex-col items-center justify-center">
         <p className="text-zinc-400 mb-4">没有找到测试结果</p>
-        <Link href="/quiz/media-talent" className="text-purple-400 hover:text-purple-300">
+        <Link href="/quiz/parent-child-edu" className="text-purple-400 hover:text-purple-300">
           重新测试
         </Link>
       </div>
     );
   }
 
-  const { topTrack, finalScores, trackScores } = reportData;
-  const data = buildReportData(topTrack, finalScores);
-  const { track, sortedAbilities, getPercent, exampleTopic, monetization, costAnalysis } = data;
+  const { dimScores, eduType } = resultData;
+  const typeInfo = eduTypes[eduType];
+
+  // 计算维度百分比（每个维度最高约15-27分，我们用估算最大值来显示）
+  const maxScores: Record<keyof DimensionScores, number> = {
+    focus: 15,
+    emotion: 15,
+    social: 12,
+    development: 12,
+    positive: 12,
+    family: 15,
+    parenting: 15,
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-purple-950 to-zinc-950 text-zinc-100 flex flex-col">
@@ -295,34 +309,49 @@ function ResultContent() {
 
       <main className="flex-1 mx-auto max-w-4xl px-4 py-12">
         <div className="text-center mb-8">
-          <h1 className="text-3xl md:text-4xl font-bold text-purple-100 mb-3">🎉 你的专属自媒体创业报告</h1>
-          <p className="text-zinc-400">基于50道专业测试，深度解析你的自媒体天赋</p>
+          <h1 className="text-3xl md:text-4xl font-bold text-purple-100 mb-3">🧑‍👧 亲子教育画像结果</h1>
+          <p className="text-zinc-400">基于30道专业测试，深度解析您的教育画像</p>
         </div>
 
         {/* Quick Result Card */}
-        <div className="bg-zinc-900/80 border border-purple-500/20 rounded-2xl p-6 mb-6 backdrop-blur-sm">
-          <div className="text-center mb-4">
-            <p className="text-purple-400 text-sm mb-2">最佳匹配赛道</p>
-            <h2 className="text-2xl font-bold text-purple-100" dangerouslySetInnerHTML={{ __html: track.name }} />
-          </div>
-          <p className="text-zinc-300 text-center">
-            {track.persona}
-          </p>
+        <div className="bg-zinc-900/80 border border-purple-500/20 rounded-2xl p-6 mb-6 backdrop-blur-sm text-center">
+          <p className="text-purple-400 text-sm mb-2">您的教育画像类型</p>
+          <h2 className="text-2xl font-bold mb-2" style={{ color: typeInfo.color }}>
+            {typeInfo.main}
+          </h2>
+          <p className="text-zinc-400 text-sm">{typeInfo.sub}</p>
         </div>
 
-        {/* Free Preview Section */}
+        {/* Description */}
         <div className="bg-zinc-900/80 border border-purple-500/20 rounded-2xl p-6 mb-6 backdrop-blur-sm">
-          <h3 className="text-xl font-bold text-purple-100 mb-4">✅ 能力雷达图</h3>
-          <div className="grid grid-cols-5 gap-3">
-            {sortedAbilities.map((ability, idx) => (
-              <div key={idx} className="text-center">
-                <div className="text-2xl font-bold text-purple-400">{getPercent(ability.score)}%</div>
-                <div className="text-xs text-zinc-400">{ability.label}</div>
-              </div>
-            ))}
+          <p className="text-zinc-300 leading-relaxed">{typeInfo.desc}</p>
+        </div>
+
+        {/* Dimension Preview */}
+        <div className="bg-zinc-900/80 border border-purple-500/20 rounded-2xl p-6 mb-6 backdrop-blur-sm">
+          <h3 className="text-xl font-bold text-purple-100 mb-4">📊 维度分析</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {(Object.keys(dimScores) as (keyof DimensionScores)[]).map((key) => {
+              const value = dimScores[key];
+              const max = maxScores[key];
+              const percent = Math.min(Math.round((value / max) * 100), 100);
+              return (
+                <div key={key} className="text-center bg-zinc-800/50 rounded-xl p-3">
+                  <div className="text-2xl font-bold text-purple-400">{percent}%</div>
+                  <div className="text-xs text-zinc-400">{dimensionLabels[key]}</div>
+                </div>
+              );
+            })}
           </div>
         </div>
 
+        {/* Action Advice Preview */}
+        <div className="bg-amber-900/20 border border-amber-500/30 rounded-2xl p-6 mb-6">
+          <h3 className="text-lg font-bold text-amber-300 mb-2">💬 改善方向</h3>
+          <p className="text-zinc-300">{typeInfo.advice}</p>
+        </div>
+
+        {/* Pay Wall */}
         <div className="bg-gradient-to-br from-purple-900/60 via-fuchsia-900/40 to-zinc-900/80 rounded-2xl p-8 border border-purple-500/40 text-center relative overflow-hidden">
           <div className="absolute inset-0 opacity-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-purple-500 via-fuchsia-500 to-transparent" />
 
@@ -332,24 +361,39 @@ function ResultContent() {
             </svg>
           </div>
 
-          <h3 className="text-xl font-bold text-purple-100 mb-2">🔒 你的专属规划指南</h3>
+          <h3 className="text-xl font-bold text-purple-100 mb-2">🔒 解锁完整教育指南</h3>
           <p className="text-zinc-300 mb-6">
-            对标账号 · 运营规划 · 成本分析 · 变现方案<br />
-            <span className="text-purple-400 text-sm">支付后即可解锁完整报告</span>
+            包含深度孩子画像、家长画像、雷达图分析<br />
+            以及为您量身定制的行动方案、心法清单和分阶段目标
+            {isTestMode && <span className="text-green-400 text-sm block mt-2">（测试期间免费查看）</span>}
           </p>
 
           <button
             onClick={() => setShowModal(true)}
             className="inline-flex items-center gap-2 px-10 py-4 rounded-full bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white font-semibold text-lg transition-all hover:scale-105 hover:shadow-lg hover:shadow-purple-500/25"
           >
-            <span>立即解锁</span>
-            <span className="text-sm opacity-90">¥9.9</span>
+            {isTestMode ? (
+              <>
+                <span>免费查看完整报告</span>
+              </>
+            ) : (
+              <>
+                <span>立即解锁</span>
+                <span className="text-sm opacity-90">¥9.9</span>
+              </>
+            )}
           </button>
 
-          <p className="text-zinc-500 text-xs mt-4">支付安全 · 24小时内可重复查看</p>
+          {!isTestMode && (
+            <p className="text-zinc-500 text-xs mt-4">支付安全 · 24小时内可重复查看</p>
+          )}
         </div>
 
         <div className="text-center mt-8">
+          <Link href="/quiz/parent-child-edu" className="text-zinc-500 text-sm hover:text-purple-400 transition-colors">
+            重新测试
+          </Link>
+          <span className="text-zinc-600 mx-2">|</span>
           <Link href="/" className="text-zinc-500 text-sm hover:text-purple-400 transition-colors">
             返回首页
           </Link>
@@ -359,20 +403,9 @@ function ResultContent() {
       <PaymentModal
         isOpen={showModal}
         onClose={() => setShowModal(false)}
-        topTrack={topTrack}
+        eduTypeName={typeInfo.main}
+        isTestMode={isTestMode}
       />
     </div>
-  );
-}
-
-export default function ResultPage() {
-  return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-purple-950 to-zinc-950 text-zinc-100 flex items-center justify-center">
-        <p className="text-zinc-400">加载中...</p>
-      </div>
-    }>
-      <ResultContent />
-    </Suspense>
   );
 }

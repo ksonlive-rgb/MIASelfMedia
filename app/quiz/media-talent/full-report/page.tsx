@@ -4,72 +4,60 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getPaidStatus } from "@/utils/storage";
-import { QuizOption } from "@/data/quizzes/mediaTalent";
+import {
+  FinalScores,
+  TrackScores,
+  TrackType,
+  abilityLabels,
+  tracks,
+  buildReportData,
+} from "@/data/quizzes/mediaTalent";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 
-const fullReportData: Record<QuizOption["type"], {
-  name: string;
-  coreTalent: string;
-  recommendedTracks: string[];
-  firstMonthPlan: string[];
-  monetizationModel: string[];
-}> = {
-  creator: {
-    name: "创作者人格",
-    coreTalent: "你拥有与生俱来的视觉感知力和创意直觉，能够将抽象的概念转化为令人惊艳的视觉作品。你对美学有敏锐的嗅觉，擅长创造出独特且辨识度高的内容风格。这种能力在信息爆炸的时代尤为珍贵，能让你的作品在海量内容中脱颖而出。",
-    recommendedTracks: ["短视频创意内容", "视觉设计/图文创作", "生活方式/美学博主", "艺术/创意类IP"],
-    firstMonthPlan: [
-      "第1周：确定内容定位，建立视觉风格库，拍摄30条素材",
-      "第2周：发布前5条内容测试数据，优化封面和标题风格",
-      "第3周：保持日更节奏，分析爆款规律，建立粉丝互动",
-      "第4周：总结数据，确立首个爆款内容模式，开始变现尝试",
-    ],
-    monetizationModel: ["品牌广告合作", "视觉素材销售", "创意课程变现", "IP周边产品"],
-  },
-  operator: {
-    name: "操盘手人格",
-    coreTalent: "你具备出色的资源整合能力和系统化思维，能够看到项目的全貌并有效地推动执行。你擅长发现问题本质、调动资源、制定策略并落地执行。在自媒体领域，你是天生的项目管理者，能够把一个账号从0到1快速搭建起来。",
-    recommendedTracks: ["知识付费运营", "电商带货操盘", "MCN机构运营", "企业自媒体代运营"],
-    firstMonthPlan: [
-      "第1周：选择赛道并对标10个头部账号，进行全面竞品分析",
-      "第2周：制定内容框架和发布计划，建立数据监测体系",
-      "第3周：执行并AB测试，快速迭代找到最优解",
-      "第4周：搭建变现闭环，开始首个变现产品的推广",
-    ],
-    monetizationModel: ["广告分成计划", "星图接单变现", "带货佣金收入", "私域转化成交"],
-  },
-  storyteller: {
-    name: "故事型人格",
-    coreTalent: "你拥有强大的共情能力和表达天赋，擅长用真实而动人的故事打动人心。你能够洞察观众的情感需求，用恰到好处的叙事方式让他们产生共鸣。在算法越来越注重互动和留存的今天，你的这种能力是稀缺的流量密码。",
-    recommendedTracks: ["情感/心理类内容", "个人成长/经历分享", "vlog记录类内容", "访谈/对话类内容"],
-    firstMonthPlan: [
-      "第1周：挖掘个人经历，整理10个可讲的故事素材",
-      "第2周：练习叙事结构，发布3-5条故事型内容",
-      "第3周：建立粉丝社群，开始收集粉丝故事",
-      "第4周：尝试直播或连麦互动，强化人设连接",
-    ],
-    monetizationModel: ["情感咨询变现", "付费社群运营", "直播打赏收入", "品牌故事合作"],
-  },
-  analyst: {
-    name: "分析师人格",
-    coreTalent: "你具备缜密的逻辑思维和强大的数据敏感度，能够从纷繁复杂的信息中提炼出本质规律。你对平台算法、用户行为、内容趋势都有深入的理解，擅长用数据驱动决策。在自媒体竞争日益激烈的环境下，这种能力让你的每一步都走得更加精准。",
-    recommendedTracks: ["科技/数码评测", "行业分析/商业观察", "数据/教程类内容", "财经/投资知识"],
-    firstMonthPlan: [
-      "第1周：选择细分领域，建立知识储备库，研究100个爆款案例",
-      "第2周：确定内容框架，输出前5篇深度分析内容",
-      "第3周：验证内容类型，关注数据指标并持续优化",
-      "第4周：建立内容模板，开始向专业IP方向深化",
-    ],
-    monetizationModel: ["付费专栏订阅", "专业咨询顾问", "行业报告销售", "企业培训合作"],
-  },
-};
+interface FullReportData {
+  topTrack: TrackType;
+  finalScores: FinalScores;
+  trackScores: TrackScores;
+}
+
+function PlanCard({
+  title,
+  cycle,
+  execution,
+  monetization,
+}: {
+  title: string;
+  cycle: string;
+  execution: string;
+  monetization: string;
+}) {
+  return (
+    <div className="bg-zinc-800/50 border border-purple-500/10 rounded-xl p-4">
+      <h5 className="text-purple-300 text-base font-semibold mb-3 border-b border-purple-500/10 pb-2">
+        {title}
+      </h5>
+      <div className="mt-2">
+        <strong className="text-purple-400 block text-sm mb-1">目标周期</strong>
+        <p className="text-zinc-400 text-sm mb-3">{cycle}</p>
+      </div>
+      <div className="mt-2">
+        <strong className="text-purple-400 block text-sm mb-1">执行方式/选题举例</strong>
+        <p className="text-zinc-400 text-sm mb-3" dangerouslySetInnerHTML={{ __html: execution }} />
+      </div>
+      <div className="mt-2">
+        <strong className="text-purple-400 block text-sm mb-1">变现方式</strong>
+        <p className="text-zinc-400 text-sm" dangerouslySetInnerHTML={{ __html: monetization }} />
+      </div>
+    </div>
+  );
+}
 
 export default function FullReportPage() {
   const [isValid, setIsValid] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
-  const [personalityType, setPersonalityType] = useState<QuizOption["type"] | null>(null);
+  const [reportData, setReportData] = useState<FullReportData | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
@@ -81,7 +69,19 @@ export default function FullReportPage() {
       return;
     }
 
-    setPersonalityType(status.type as QuizOption["type"]);
+    // Load stored scores from localStorage
+    const storedScores = localStorage.getItem("media_talent_finalScores");
+    const storedTrack = localStorage.getItem("media_talent_topTrack");
+    const storedTrackScores = localStorage.getItem("media_talent_trackScores");
+
+    if (storedScores && storedTrack && storedTrackScores) {
+      setReportData({
+        finalScores: JSON.parse(storedScores),
+        topTrack: storedTrack as TrackType,
+        trackScores: JSON.parse(storedTrackScores),
+      });
+    }
+
     setIsValid(true);
     setIsLoading(false);
   }, [router]);
@@ -131,7 +131,8 @@ export default function FullReportPage() {
         heightLeft -= pageHeight;
       }
 
-      pdf.save(`Mia图灵迷宫-${personalityType}-完整报告.pdf`);
+      const trackName = tracks[reportData!.topTrack].name.replace(/[🚀💖💡💰\s]/g, "");
+      pdf.save(`Mia图灵迷宫-${trackName}-完整报告.pdf`);
     } catch (error) {
       console.error("PDF生成失败:", error);
     } finally {
@@ -147,11 +148,20 @@ export default function FullReportPage() {
     );
   }
 
-  if (!isValid || !personalityType) {
-    return null;
+  if (!isValid || !reportData) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-purple-950 to-zinc-950 text-zinc-100 flex flex-col items-center justify-center">
+        <p className="text-zinc-400 mb-4">没有找到测试结果</p>
+        <Link href="/quiz/media-talent" className="text-purple-400 hover:text-purple-300">
+          重新测试
+        </Link>
+      </div>
+    );
   }
 
-  const data = fullReportData[personalityType];
+  const { topTrack, finalScores } = reportData;
+  const data = buildReportData(topTrack, finalScores);
+  const { track, sortedAbilities, getPercent, exampleTopic, monetization, costAnalysis } = data;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-purple-950 to-zinc-950 text-zinc-100">
@@ -177,80 +187,111 @@ export default function FullReportPage() {
             </svg>
             完整AI人格报告
           </div>
-          <h1 className="text-3xl md:text-4xl font-bold text-purple-100 mb-3">{data.name}</h1>
+          <h1 className="text-3xl md:text-4xl font-bold text-purple-100 mb-3" dangerouslySetInnerHTML={{ __html: track.name }} />
           <p className="text-zinc-400">深度解析你的自媒体天赋与成长路径</p>
         </div>
 
-        {/* Core Talent Section */}
-        <div className="bg-zinc-900/80 border border-purple-500/20 rounded-2xl p-6 md:p-8 mb-6 backdrop-blur-sm">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-600/30 to-fuchsia-600/30 border border-purple-500/20 flex items-center justify-center">
-              <svg className="w-5 h-5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            </div>
-            <h2 className="text-xl font-bold text-purple-100">核心天赋解析</h2>
-          </div>
-          <p className="text-zinc-300 leading-relaxed">{data.coreTalent}</p>
-        </div>
+        {/* 板块一：天赋诊断 */}
+        <div className="mb-6">
+          <div className="bg-zinc-900/80 border border-purple-500/20 rounded-2xl p-6 md:p-8">
+            <h2 className="text-xl font-bold text-purple-100 mb-4">✅ 板块一：天赋诊断</h2>
 
-        {/* Recommended Tracks */}
-        <div className="bg-zinc-900/80 border border-purple-500/20 rounded-2xl p-6 md:p-8 mb-6 backdrop-blur-sm">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-600/30 to-fuchsia-600/30 border border-purple-500/20 flex items-center justify-center">
-              <svg className="w-5 h-5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-              </svg>
-            </div>
-            <h2 className="text-xl font-bold text-purple-100">推荐赛道</h2>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            {data.recommendedTracks.map((track, idx) => (
-              <div key={idx} className="bg-zinc-800/50 rounded-xl p-4 text-center border border-purple-500/10">
-                <span className="text-purple-300">{track}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* First Month Plan */}
-        <div className="bg-zinc-900/80 border border-purple-500/20 rounded-2xl p-6 md:p-8 mb-6 backdrop-blur-sm">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-600/30 to-fuchsia-600/30 border border-purple-500/20 flex items-center justify-center">
-              <svg className="w-5 h-5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-            </div>
-            <h2 className="text-xl font-bold text-purple-100">起号首月计划</h2>
-          </div>
-          <div className="space-y-3">
-            {data.firstMonthPlan.map((plan, idx) => (
-              <div key={idx} className="flex items-start gap-3 bg-zinc-800/50 rounded-xl p-4 border border-purple-500/10">
-                <div className="w-6 h-6 rounded-full bg-purple-600/30 border border-purple-500/30 flex items-center justify-center shrink-0 text-sm text-purple-300">
-                  {idx + 1}
+            <h3 className="text-lg font-semibold text-purple-300 mb-4">核心能力雷达图：</h3>
+            <div className="grid grid-cols-5 gap-3">
+              {sortedAbilities.map((ability, idx) => (
+                <div key={idx} className="text-center">
+                  <div className="text-2xl font-bold text-purple-400">{getPercent(ability.score)}%</div>
+                  <div className="text-xs text-zinc-400">{ability.label}</div>
                 </div>
-                <p className="text-zinc-300 text-sm leading-relaxed">{plan}</p>
-              </div>
-            ))}
+              ))}
+            </div>
+
+            <h3 className="text-lg font-semibold text-purple-300 mt-6 mb-4">能力总结：</h3>
+            <ul className="space-y-2">
+              <li className="bg-zinc-800/50 p-3 rounded-lg text-sm text-zinc-300">
+                <strong className="text-purple-400">主导天赋：</strong>{sortedAbilities[0].label}（得分 {getPercent(sortedAbilities[0].score)}%）。这代表你最强的底层驱动力，应作为内容创作的核心卖点。
+              </li>
+              <li className="bg-zinc-800/50 p-3 rounded-lg text-sm text-zinc-300">
+                <strong className="text-purple-400">辅助能力：</strong>{sortedAbilities[1].label}（得分 {getPercent(sortedAbilities[1].score)}%）和 {sortedAbilities[2].label}（得分 {getPercent(sortedAbilities[2].score)}%）。这些能力可以帮你实现内容差异化和高效产出。
+              </li>
+              <li className="bg-zinc-800/50 p-3 rounded-lg text-sm text-zinc-300">
+                <strong className="text-purple-400">诊断结论：</strong>你的天赋结构最适合打造<strong className="text-purple-300">{track.name}</strong>的个人IP，建议将你的<strong className="text-purple-300">{track.focus}</strong>能力发挥到极致。
+              </li>
+            </ul>
           </div>
         </div>
 
-        {/* Monetization Model */}
-        <div className="bg-zinc-900/80 border border-purple-500/20 rounded-2xl p-6 md:p-8 mb-6 backdrop-blur-sm">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-600/30 to-fuchsia-600/30 border border-purple-500/20 flex items-center justify-center">
-              <svg className="w-5 h-5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <h2 className="text-xl font-bold text-purple-100">变现模型</h2>
+        {/* 板块二：赛道与对标 */}
+        <div className="mb-6">
+          <div className="bg-zinc-900/80 border border-purple-500/20 rounded-2xl p-6 md:p-8">
+            <h2 className="text-xl font-bold text-purple-100 mb-4">💡 板块二：赛道与对标</h2>
+
+            <h3 className="text-lg font-semibold text-purple-300 mb-3">最佳赛道：<span dangerouslySetInnerHTML={{ __html: track.name }} /></h3>
+            <p className="text-zinc-300 mb-4">
+              <strong>建议人设：</strong>{track.persona}。这个定位将最大化利用你的<strong className="text-purple-300">{track.abilities.map(k => abilityLabels[k]).join("、")}</strong>优势。
+            </p>
+
+            <h3 className="text-lg font-semibold text-purple-300 mb-3">赛道现况分析：</h3>
+            <ul className="space-y-2 mb-4">
+              {track.analysis.map((text, idx) => (
+                <li key={idx} className="bg-zinc-800/50 p-3 rounded-lg text-sm text-zinc-300" dangerouslySetInnerHTML={{ __html: text.replace(/<strong>/g, '<strong className="text-purple-400">').replace(/<\/strong>/g, "</strong>") }} />
+              ))}
+            </ul>
+
+            <h3 className="text-lg font-semibold text-purple-300 mb-3">对标账号：</h3>
+            <ul className="space-y-2">
+              {track.rivals.map((r, idx) => (
+                <li key={idx} className="bg-zinc-800/50 p-3 rounded-lg text-sm text-zinc-300">
+                  <strong className="text-purple-400">{r}</strong>（搜索该账号，学习其选题逻辑、内容结构和互动方式）
+                </li>
+              ))}
+            </ul>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            {data.monetizationModel.map((model, idx) => (
-              <div key={idx} className="bg-zinc-800/50 rounded-xl p-4 text-center border border-purple-500/10">
-                <span className="text-purple-300">{model}</span>
-              </div>
-            ))}
+        </div>
+
+        {/* 板块三：运营规划 */}
+        <div className="mb-6">
+          <div className="bg-zinc-900/80 border border-purple-500/20 rounded-2xl p-6 md:p-8">
+            <h2 className="text-xl font-bold text-purple-100 mb-4">💰 板块三：运营规划</h2>
+
+            <h3 className="text-lg font-semibold text-purple-300 mb-3">核心执行方式：</h3>
+            <p className="text-zinc-300 mb-6">
+              利用你的<strong className="text-purple-400">{sortedAbilities[0].label}</strong>天赋，确保内容的<strong className="text-purple-400">{track.focus.split("、")[0]}</strong>，同时克服<strong className="text-purple-400">{sortedAbilities[4].label}</strong>的短板（如需）。
+            </p>
+
+            <PlanCard
+              title="前期（0-1000粉）"
+              cycle="1-3个月"
+              execution={`<strong>内容验证：</strong>专注于${exampleTopic.pre}。高频发布，快速测试用户反馈。`}
+              monetization={`无，或<strong>私域预热</strong>（如：免费资料引流）。`}
+            />
+            <div className="mt-3" />
+            <PlanCard
+              title="中期（1000-10万粉）"
+              cycle="4-12个月"
+              execution={`<strong>打造爆款：</strong>深耕${exampleTopic.mid}。开始固定人设，形成稳定创作节奏。`}
+              monetization={`${monetization.basic}。`}
+            />
+            <div className="mt-3" />
+            <PlanCard
+              title="后期（10万+粉）"
+              cycle="1年以上"
+              execution={`<strong>品牌升级：</strong>进行${exampleTopic.post}。孵化社群，开展IP多平台布局。`}
+              monetization={`${monetization.advanced}。`}
+            />
+
+            <h3 className="text-lg font-semibold text-purple-300 mt-6 mb-3">成本分析：</h3>
+            <ul className="space-y-2">
+              <li className="bg-zinc-800/50 p-3 rounded-lg text-sm text-zinc-300">
+                <strong className="text-purple-400">核心投入：</strong>{costAnalysis.focus}
+              </li>
+              <li className="bg-zinc-800/50 p-3 rounded-lg text-sm text-zinc-300">
+                <strong className="text-purple-400">时间成本：</strong>初期建议每天投入<strong className="text-purple-400">{costAnalysis.time}小时</strong>小时用于内容制作和学习。
+              </li>
+              <li className="bg-zinc-800/50 p-3 rounded-lg text-sm text-zinc-300">
+                <strong className="text-purple-400">设备建议：</strong>初期可使用手机和补光灯，专业设备可等到变现后再投入。
+              </li>
+            </ul>
           </div>
         </div>
 

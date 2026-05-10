@@ -51,37 +51,67 @@ export default function Home() {
           </p>
         </div>
 
-        {/* Test Card */}
+        {/* Test Cards */}
+      <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl w-full px-4">
+        {/* Media Talent Test Card */}
         <Link
           href="/quiz/media-talent"
-          className="mt-16 group relative"
+          className="group relative"
         >
           <div className="absolute -inset-1 bg-gradient-to-r from-purple-600 to-fuchsia-600 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-500" />
-          <div className="relative bg-zinc-900/90 border border-purple-500/20 rounded-2xl p-8 md:p-10 backdrop-blur-sm group-hover:border-purple-500/40 transition-all duration-300">
-            <div className="flex flex-col md:flex-row items-center gap-6 md:gap-10">
-              <div className="w-20 h-20 rounded-xl bg-gradient-to-br from-purple-600/30 to-fuchsia-600/30 border border-purple-500/20 flex items-center justify-center shrink-0">
-                <svg className="w-10 h-10 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="relative bg-zinc-900/90 border border-purple-500/20 rounded-2xl p-6 md:p-8 backdrop-blur-sm group-hover:border-purple-500/40 transition-all duration-300">
+            <div className="flex items-start gap-5">
+              <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-purple-600/30 to-fuchsia-600/30 border border-purple-500/20 flex items-center justify-center shrink-0">
+                <svg className="w-8 h-8 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                 </svg>
               </div>
-              <div className="text-center md:text-left">
-                <h2 className="text-xl md:text-2xl font-semibold text-purple-100 mb-2">
+              <div className="flex-1">
+                <h2 className="text-lg font-semibold text-purple-100 mb-1">
                   自媒体天赋测试
                 </h2>
-                <p className="text-zinc-400 text-sm md:text-base max-w-sm">
+                <p className="text-zinc-400 text-sm">
                   探索你在自媒体世界中的独特天赋与潜力
                 </p>
-                <div className="mt-4 flex items-center justify-center md:justify-start gap-2 text-purple-400 text-sm font-medium">
-                  <span>开始探索</span>
-                  <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                  </svg>
+                <div className="mt-3 flex items-center gap-1.5 text-purple-400 text-xs font-medium">
+                  <span>50题 · 约5分钟</span>
+                  <span>·</span>
+                  <span>立即测试</span>
                 </div>
               </div>
             </div>
           </div>
         </Link>
-      </main>
+
+        {/* Parent Child Education Test Card */}
+        <Link
+          href="/quiz/parent-child-edu"
+          className="group relative"
+        >
+          <div className="absolute -inset-1 bg-gradient-to-r from-amber-500 to-orange-600 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-500" />
+          <div className="relative bg-zinc-900/90 border border-amber-500/20 rounded-2xl p-6 md:p-8 backdrop-blur-sm group-hover:border-amber-500/40 transition-all duration-300">
+            <div className="flex items-start gap-5">
+              <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-amber-600/30 to-orange-600/30 border border-amber-500/20 flex items-center justify-center shrink-0">
+                <span className="text-3xl">🧑‍👧</span>
+              </div>
+              <div className="flex-1">
+                <h2 className="text-lg font-semibold text-purple-100 mb-1">
+                  亲子教育画像测试
+                </h2>
+                <p className="text-zinc-400 text-sm">
+                  理性看见孩子，也看见自己
+                </p>
+                <div className="mt-3 flex items-center gap-1.5 text-amber-400 text-xs font-medium">
+                  <span>30题 · 约5分钟</span>
+                  <span>·</span>
+                  <span>24小时免费测试</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Link>
+      </div>
+    </main>
 
       {/* Footer */}
       <footer className="border-t border-purple-900/20 py-6">

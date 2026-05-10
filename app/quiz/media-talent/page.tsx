@@ -2,20 +2,20 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { mediaTalentQuiz, QuizOption } from "@/data/quizzes/mediaTalent";
+import { mediaTalentQuiz, processQuizResults, FinalScores } from "@/data/quizzes/mediaTalent";
 
 export default function MediaTalentPage() {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [answers, setAnswers] = useState<QuizOption["type"][]>([]);
+  const [answers, setAnswers] = useState<number[]>([]);
   const [isAnimating, setIsAnimating] = useState(false);
   const router = useRouter();
 
   const currentQuestion = mediaTalentQuiz[currentIndex];
 
-  const handleSelect = (type: QuizOption["type"]) => {
+  const handleSelect = (optionIndex: number) => {
     if (isAnimating) return;
 
-    const newAnswers = [...answers, type];
+    const newAnswers = [...answers, optionIndex];
     setAnswers(newAnswers);
     setIsAnimating(true);
 
@@ -24,8 +24,12 @@ export default function MediaTalentPage() {
         setCurrentIndex(currentIndex + 1);
         setIsAnimating(false);
       } else {
-        // Save answers to localStorage before navigation
+        // Process results and save to localStorage
+        const result = processQuizResults(newAnswers);
         localStorage.setItem("media_talent_answers", JSON.stringify(newAnswers));
+        localStorage.setItem("media_talent_finalScores", JSON.stringify(result.finalScores));
+        localStorage.setItem("media_talent_topTrack", result.topTrack);
+        localStorage.setItem("media_talent_trackScores", JSON.stringify(result.trackScores));
         router.push(`/quiz/media-talent/result?answers=${newAnswers.join(",")}`);
       }
     }, 300);
@@ -78,10 +82,11 @@ export default function MediaTalentPage() {
               {currentQuestion.options.map((option, idx) => (
                 <button
                   key={idx}
-                  onClick={() => handleSelect(option.type)}
+                  onClick={() => handleSelect(idx)}
                   disabled={isAnimating}
                   className="w-full text-left p-4 rounded-xl border border-purple-500/20 bg-zinc-800/50 text-zinc-200 transition-all duration-200 hover:bg-purple-600/20 hover:border-purple-500/40 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
+                  <span className="text-purple-400 font-medium mr-2">{String.fromCharCode(65 + idx)}.</span>
                   {option.text}
                 </button>
               ))}
@@ -89,7 +94,7 @@ export default function MediaTalentPage() {
           </div>
 
           {/* Question Dots */}
-          <div className="flex justify-center gap-2 mt-8">
+          <div className="flex justify-center gap-2 mt-8 flex-wrap">
             {mediaTalentQuiz.map((_, idx) => (
               <div
                 key={idx}

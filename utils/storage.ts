@@ -5,6 +5,7 @@ export interface PaidStatus {
   quizId: string;
   type: string;
   timestamp: number;
+  testMode?: boolean; // true if accessed via test mode (no payment required)
 }
 
 export function savePaidStatus(quizId: string, type: string): void {
@@ -15,6 +16,20 @@ export function savePaidStatus(quizId: string, type: string): void {
     quizId,
     type,
     timestamp: Date.now(),
+  };
+  localStorage.setItem(key, JSON.stringify(status));
+}
+
+// Save test mode access - grants 24-hour access without payment
+export function saveTestAccess(quizId: string, type: string): void {
+  if (typeof window === "undefined") return;
+
+  const key = `${STORAGE_KEY_PREFIX}${quizId}`;
+  const status: PaidStatus = {
+    quizId,
+    type,
+    timestamp: Date.now(),
+    testMode: true,
   };
   localStorage.setItem(key, JSON.stringify(status));
 }
