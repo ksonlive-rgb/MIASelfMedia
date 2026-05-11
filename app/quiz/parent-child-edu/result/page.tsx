@@ -328,7 +328,8 @@ export default function ResultPage() {
             onClick={() => setShowModal(true)}
             className="relative z-10 inline-flex items-center gap-2 px-10 py-4 rounded-full bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white font-semibold text-lg transition-all hover:scale-105 hover:shadow-lg hover:shadow-purple-500/25"
           >
-            立即测试
+            <span>立即解锁</span>
+            <span className="text-sm opacity-90">¥9.9</span>
           </button>
 
           <div className="relative z-10">

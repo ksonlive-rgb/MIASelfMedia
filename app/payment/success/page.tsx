@@ -35,6 +35,11 @@ function PaymentSuccessContent() {
     const quizId = pending?.quizId || fromParam?.quizId || null;
     const paidLabel = pending?.paidLabel ?? fromParam?.paidLabel ?? "";
 
+    const returnQuery: Record<string, string> = {};
+    searchParams.forEach((value, key) => {
+      returnQuery[key] = value;
+    });
+
     async function poll() {
       if (!orderNo) {
         setPhase("idle");
@@ -50,7 +55,7 @@ function PaymentSuccessContent() {
           const res = await fetch("/api/pay/check", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ orderNo }),
+            body: JSON.stringify({ orderNo, returnQuery }),
           });
           const data = (await res.json()) as { paid?: boolean };
 
@@ -151,13 +156,6 @@ function PaymentSuccessContent() {
             返回首页
           </Link>
         )}
-
-        <Link
-          href="/"
-          className="inline-block mt-8 text-zinc-500 text-sm hover:text-purple-400 transition-colors"
-        >
-          返回首页
-        </Link>
       </div>
     </main>
   );
