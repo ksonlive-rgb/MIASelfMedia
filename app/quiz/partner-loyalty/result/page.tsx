@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { SocialProofFullReportLine } from "@/components/SocialProofFullReportLine";
 import { savePaidStatus } from "@/utils/storage";
 import {
   computePartnerRiskPercentage,
@@ -11,6 +12,7 @@ import {
   partnerLoyaltyQuestions,
 } from "@/data/quizzes/partnerLoyalty";
 import { PARTNER_LOYALTY_LS } from "@/lib/quiz/partnerLoyaltyStorage";
+import { savePayPendingSession } from "@/lib/pay/payPendingSession";
 
 const PARTNER_FULL_REPORT_HREF = "/quiz/partner-loyalty/full-report";
 
@@ -49,10 +51,23 @@ function PaymentModal({ isOpen, onClose, typeLabel }: PaymentModalProps) {
     fetch("/api/pay/create", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: "partner-loyalty" }),
+      body: JSON.stringify({ type: "partner-loyalty", paidLabel: typeLabel }),
     })
       .then((res) => res.json())
       .then((data) => {
+        if (
+          typeof data.orderNo === "string" &&
+          data.orderNo &&
+          typeof data.quizId === "string" &&
+          data.quizId
+        ) {
+          savePayPendingSession({
+            orderNo: data.orderNo,
+            quizId: data.quizId,
+            paidLabel: typeof data.paidLabel === "string" ? data.paidLabel : "",
+          });
+        }
+
         if (data.fallbackParams) {
           const form = document.createElement("form");
           form.method = "POST";
@@ -86,7 +101,7 @@ function PaymentModal({ isOpen, onClose, typeLabel }: PaymentModalProps) {
       })
       .catch(() => setError("网络错误"))
       .finally(() => setIsLoading(false));
-  }, [isOpen]);
+  }, [isOpen, typeLabel]);
 
   useEffect(() => {
     if (!orderNo || !isPolling) return;
@@ -234,11 +249,7 @@ export default function PartnerLoyaltyResultPage() {
     const riskStr = localStorage.getItem(PARTNER_LOYALTY_LS.risk);
 
     let resolvedRisk: number | null = null;
-    if (riskStr !== null) {
-      resolvedRisk = parseInt(riskStr, 10);
-      if (Number.isNaN(resolvedRisk)) resolvedRisk = null;
-    }
-    if (resolvedRisk === null && scoresStr) {
+    if (scoresStr) {
       try {
         const arr = JSON.parse(scoresStr) as number[];
         if (Array.isArray(arr) && arr.length === partnerLoyaltyQuestions.length) {
@@ -246,8 +257,12 @@ export default function PartnerLoyaltyResultPage() {
           localStorage.setItem(PARTNER_LOYALTY_LS.risk, String(resolvedRisk));
         }
       } catch {
-        resolvedRisk = null;
+        // ignore
       }
+    }
+    if (resolvedRisk === null && riskStr !== null) {
+      resolvedRisk = parseInt(riskStr, 10);
+      if (Number.isNaN(resolvedRisk)) resolvedRisk = null;
     }
 
     if (resolvedRisk === null) return;
@@ -355,6 +370,10 @@ export default function PartnerLoyaltyResultPage() {
             <span>立即解锁</span>
             <span className="text-sm opacity-90">¥9.9</span>
           </button>
+
+          <div className="relative z-10">
+            <SocialProofFullReportLine quizId="partner-loyalty" className="text-zinc-500 text-xs mt-3 relative z-10" />
+          </div>
 
           <p className="text-zinc-500 text-xs mt-4 relative z-10">支付安全 · 24小时内可重复查看</p>
         </div>

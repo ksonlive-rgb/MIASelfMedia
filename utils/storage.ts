@@ -1,5 +1,25 @@
 const STORAGE_KEY_PREFIX = "mia_turing_lab_paid_";
-const VALIDITY_DURATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+export const PAID_VALIDITY_MS = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+
+function paidStorageKey(quizId: string) {
+  return `${STORAGE_KEY_PREFIX}${quizId}`;
+}
+
+/** Read payload without TTL side effects (TTL checked by callers). */
+function readPaidPayload(quizId: string): PaidStatus | null {
+  if (typeof window === "undefined") return null;
+
+  const key = paidStorageKey(quizId);
+  const data = localStorage.getItem(key);
+  if (!data) return null;
+
+  try {
+    return JSON.parse(data) as PaidStatus;
+  } catch {
+    localStorage.removeItem(key);
+    return null;
+  }
+}
 
 export interface PaidStatus {
   quizId: string;
@@ -11,7 +31,7 @@ export interface PaidStatus {
 export function savePaidStatus(quizId: string, type: string): void {
   if (typeof window === "undefined") return;
 
-  const key = `${STORAGE_KEY_PREFIX}${quizId}`;
+  const key = paidStorageKey(quizId);
   const status: PaidStatus = {
     quizId,
     type,
@@ -24,7 +44,7 @@ export function savePaidStatus(quizId: string, type: string): void {
 export function saveTestAccess(quizId: string, type: string): void {
   if (typeof window === "undefined") return;
 
-  const key = `${STORAGE_KEY_PREFIX}${quizId}`;
+  const key = paidStorageKey(quizId);
   const status: PaidStatus = {
     quizId,
     type,
@@ -37,25 +57,34 @@ export function saveTestAccess(quizId: string, type: string): void {
 export function getPaidStatus(quizId: string): PaidStatus | null {
   if (typeof window === "undefined") return null;
 
-  const key = `${STORAGE_KEY_PREFIX}${quizId}`;
-  const data = localStorage.getItem(key);
+  const status = readPaidPayload(quizId);
+  if (!status) return null;
 
-  if (!data) return null;
+  const elapsed = Date.now() - status.timestamp;
+  const key = paidStorageKey(quizId);
 
-  try {
-    const status: PaidStatus = JSON.parse(data);
-
-    const now = Date.now();
-    const elapsed = now - status.timestamp;
-
-    if (elapsed > VALIDITY_DURATION) {
-      localStorage.removeItem(key);
-      return null;
-    }
-
-    return status;
-  } catch {
+  if (elapsed > PAID_VALIDITY_MS) {
     localStorage.removeItem(key);
     return null;
   }
+
+  return status;
+}
+
+/** Milliseconds remaining for full-report access; null if none or expired. */
+export function getPaidRemainingMs(quizId: string): number | null {
+  if (typeof window === "undefined") return null;
+
+  const status = readPaidPayload(quizId);
+  if (!status) return null;
+
+  const elapsed = Date.now() - status.timestamp;
+  const key = paidStorageKey(quizId);
+
+  if (elapsed > PAID_VALIDITY_MS) {
+    localStorage.removeItem(key);
+    return null;
+  }
+
+  return PAID_VALIDITY_MS - elapsed;
 }

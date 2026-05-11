@@ -2,13 +2,11 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import {
-  DimensionScores,
-  eduTypes,
-  dimensionLabels,
-} from "@/data/quizzes/parentChildEdu";
+import { SocialProofFullReportLine } from "@/components/SocialProofFullReportLine";
+import { DimensionScores, eduTypes } from "@/data/quizzes/parentChildEdu";
 import { savePaidStatus } from "@/utils/storage";
 import { PARENT_CHILD_LS } from "@/lib/quiz/parentChildStorage";
+import { savePayPendingSession } from "@/lib/pay/payPendingSession";
 
 /** 亲子测评解锁后进入完整报告（与手动访问路径一致） */
 const PARENT_CHILD_FULL_REPORT_HREF = "/quiz/parent-child-edu/full-report";
@@ -48,10 +46,23 @@ function PaymentModal({ isOpen, onClose, eduTypeName }: PaymentModalProps) {
     fetch("/api/pay/create", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: "parent-child-edu" }),
+      body: JSON.stringify({ type: "parent-child-edu", paidLabel: eduTypeName }),
     })
       .then((res) => res.json())
       .then((data) => {
+        if (
+          typeof data.orderNo === "string" &&
+          data.orderNo &&
+          typeof data.quizId === "string" &&
+          data.quizId
+        ) {
+          savePayPendingSession({
+            orderNo: data.orderNo,
+            quizId: data.quizId,
+            paidLabel: typeof data.paidLabel === "string" ? data.paidLabel : "",
+          });
+        }
+
         if (data.fallbackParams) {
           const form = document.createElement("form");
           form.method = "POST";
@@ -85,7 +96,7 @@ function PaymentModal({ isOpen, onClose, eduTypeName }: PaymentModalProps) {
       })
       .catch(() => setError("网络错误"))
       .finally(() => setIsLoading(false));
-  }, [isOpen]);
+  }, [isOpen, eduTypeName]);
 
   useEffect(() => {
     if (!orderNo || !isPolling) return;
@@ -251,19 +262,8 @@ export default function ResultPage() {
     );
   }
 
-  const { dimScores, eduType } = resultData;
+  const { eduType } = resultData;
   const typeInfo = eduTypes[eduType];
-
-  // 计算维度百分比（每个维度最高约15-27分，我们用估算最大值来显示）
-  const maxScores: Record<keyof DimensionScores, number> = {
-    focus: 15,
-    emotion: 15,
-    social: 12,
-    development: 12,
-    positive: 12,
-    family: 15,
-    parenting: 15,
-  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-purple-950 to-zinc-950 text-zinc-100 flex flex-col">
@@ -298,24 +298,6 @@ export default function ResultPage() {
           <p className="text-zinc-300 leading-relaxed">{typeInfo.desc}</p>
         </div>
 
-        {/* Dimension Preview */}
-        <div className="bg-zinc-900/80 border border-purple-500/20 rounded-2xl p-6 mb-6 backdrop-blur-sm">
-          <h3 className="text-xl font-bold text-purple-100 mb-4">📊 维度分析</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {(Object.keys(dimScores) as (keyof DimensionScores)[]).map((key) => {
-              const value = dimScores[key];
-              const max = maxScores[key];
-              const percent = Math.min(Math.round((value / max) * 100), 100);
-              return (
-                <div key={key} className="text-center bg-zinc-800/50 rounded-xl p-3">
-                  <div className="text-2xl font-bold text-purple-400">{percent}%</div>
-                  <div className="text-xs text-zinc-400">{dimensionLabels[key]}</div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
         {/* Action Advice Preview */}
         <div className="bg-amber-900/20 border border-amber-500/30 rounded-2xl p-6 mb-6">
           <h3 className="text-lg font-bold text-amber-300 mb-2">💬 改善方向</h3>
@@ -346,9 +328,12 @@ export default function ResultPage() {
             onClick={() => setShowModal(true)}
             className="relative z-10 inline-flex items-center gap-2 px-10 py-4 rounded-full bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white font-semibold text-lg transition-all hover:scale-105 hover:shadow-lg hover:shadow-purple-500/25"
           >
-            <span>立即解锁</span>
-            <span className="text-sm opacity-90">¥9.9</span>
+            立即测试
           </button>
+
+          <div className="relative z-10">
+            <SocialProofFullReportLine quizId="parent-child-edu" className="text-zinc-500 text-xs mt-3" />
+          </div>
 
           <p className="text-zinc-500 text-xs mt-4">支付安全 · 24小时内可重复查看</p>
         </div>

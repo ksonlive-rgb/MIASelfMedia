@@ -12,7 +12,9 @@ import {
   buildReportData,
   mediaTalentQuiz,
 } from "@/data/quizzes/mediaTalent";
+import { SocialProofFullReportLine } from "@/components/SocialProofFullReportLine";
 import { savePaidStatus } from "@/utils/storage";
+import { savePayPendingSession } from "@/lib/pay/payPendingSession";
 
 function isMobileDevice(): boolean {
   if (typeof window === "undefined") return false;
@@ -53,6 +55,19 @@ function PaymentModal({ isOpen, onClose, topTrack }: PaymentModalProps) {
     })
       .then((res) => res.json())
       .then((data) => {
+        if (
+          typeof data.orderNo === "string" &&
+          data.orderNo &&
+          typeof data.quizId === "string" &&
+          data.quizId
+        ) {
+          savePayPendingSession({
+            orderNo: data.orderNo,
+            quizId: data.quizId,
+            paidLabel: typeof data.paidLabel === "string" ? data.paidLabel : "",
+          });
+        }
+
         if (data.fallbackParams) {
           const form = document.createElement("form");
           form.method = "POST";
@@ -345,6 +360,10 @@ function ResultContent() {
             <span>立即解锁</span>
             <span className="text-sm opacity-90">¥9.9</span>
           </button>
+
+          <div className="relative z-10">
+            <SocialProofFullReportLine quizId="media-talent" className="text-zinc-500 text-xs mt-3" />
+          </div>
 
           <p className="text-zinc-500 text-xs mt-4">支付安全 · 24小时内可重复查看</p>
         </div>

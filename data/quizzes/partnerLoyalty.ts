@@ -466,16 +466,42 @@ export const partnerLoyaltyQuestions: PartnerQuestion[] = [
 
 export type PartnerRiskTierKey = "stable" | "pragmatic" | "peacock" | "replacement";
 
+/** Abramowitz & Stegun 7.1.26 — used for random-click percentile mapping. */
+function erf(x: number): number {
+  const sign = x < 0 ? -1 : 1;
+  const ax = Math.abs(x);
+  const p = 0.3275911;
+  const t = 1 / (1 + p * ax);
+  const y =
+    1 -
+    (((((1.061405429 * t - 1.453152027) * t + 1.421413741) * t - 0.284496736) * t + 0.254829592) *
+      t *
+      Math.exp(-ax * ax));
+  return sign * y;
+}
+
+function normalCdf(z: number): number {
+  return 0.5 * (1 + erf(z / Math.SQRT2));
+}
+
+/**
+ * 风险指数 0–100：在「每题独立均匀随机选 1～4」的理想模型下，
+ * 总分近似 N(2.5n, 1.25n)，映射为标准正态累积分布 → 近似服从均匀分布。
+ * 因而在乱选时四档人格（25/50/75 分界）各占约 25%。
+ */
 export function computePartnerRiskPercentage(totalScore: number): number {
   const n = partnerLoyaltyQuestions.length;
-  const minScore = n * 1;
-  const maxScore = n * 4;
-  return Math.round(((totalScore - minScore) / (maxScore - minScore)) * 100);
+  const mean = n * 2.5;
+  const variance = n * 1.25;
+  const sigma = Math.sqrt(variance);
+  const z = (totalScore - mean) / sigma;
+  const p = normalCdf(z);
+  return Math.round(Math.min(100, Math.max(0, p)) * 100);
 }
 
 export function getPartnerRiskTierKey(risk: number): PartnerRiskTierKey {
   if (risk <= 25) return "stable";
-  if (risk <= 55) return "pragmatic";
+  if (risk <= 50) return "pragmatic";
   if (risk <= 75) return "peacock";
   return "replacement";
 }
@@ -495,7 +521,7 @@ export function getPartnerShortEvaluation(risk: number): PartnerShortEvaluation 
         "从扔垃圾、吃剩饭到穿搭习惯，TA的所有潜意识都在透露一个信息：TA厌恶风险，长情且恋旧。对于TA来说，东西坏了要修，感情出了问题要解决，而不是去找下一个。你拥有一个极高安全感和极低出轨风险的伴侣。",
     };
   }
-  if (risk <= 55) {
+  if (risk <= 50) {
     return {
       color: "#FAD7A1",
       title: "「大众常态：务实且边界清晰」",
@@ -541,7 +567,7 @@ export function getPartnerFullReportHtmlSections(risk: number): [string, string,
       )}。创造大量专属于你们的日常仪式感（例如固定的周末安排、特定的睡前交流）。当你的存在彻底成为TA潜意识里的‘默认选项’时，TA离开你的沉没成本将高到TA自己根本无法承受。</p>`,
     ];
   }
-  if (risk <= 55) {
+  if (risk <= 50) {
     return [
       `<p>测试显示，TA在多数情况下遵循常规，但在涉及‘偶尔的享受’时也会选择尝鲜。这说明TA的核心人格特征是${hl(
         "‘实用主义（Pragmatism）’"

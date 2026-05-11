@@ -335,18 +335,82 @@ function removeAllStyleTagsFromClonedDocument(doc: Document): void {
   });
 }
 
-/** 将报告 DOM 导出为一张 PNG 长图（适合手机保存到相册）。 */
+function waitForFontsAndPaint(): Promise<void> {
+  const fontsReady =
+    typeof document !== "undefined" && document.fonts?.ready
+      ? document.fonts.ready.then(() => undefined)
+      : Promise.resolve(undefined);
+  return fontsReady.then(
+    () =>
+      new Promise((resolve) => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => resolve());
+        });
+      }),
+  );
+}
+
+/** 移动/触摸设备更适合先调起系统分享（可在分享表里选存储到相册） */
+function shouldPreferNativeShareSheet(): boolean {
+  if (typeof navigator === "undefined") return false;
+  if (typeof window === "undefined") return false;
+  const ua = navigator.userAgent;
+  const mobile = /iphone|ipad|ipod|android/i.test(ua);
+  const coarsePointer = window.matchMedia?.("(pointer: coarse)")?.matches === true;
+  return mobile || coarsePointer;
+}
+
+/** Blob + 系统分享：可在分享表里选「存储到相册」「保存图像」等 */
+async function trySharePngFile(blob: Blob, name: string): Promise<boolean> {
+  if (typeof navigator === "undefined" || !navigator.share) return false;
+  const file = new File([blob], name, { type: "image/png" });
+  const payload: ShareData = { files: [file], title: "测试报告" };
+  if (!navigator.canShare?.(payload)) return false;
+  try {
+    await navigator.share(payload);
+    return true;
+  } catch (e) {
+    if (e instanceof DOMException && e.name === "AbortError") return true;
+    if (e instanceof Error && e.name === "AbortError") return true;
+    return false;
+  }
+}
+
+function triggerDownload(blob: Blob, name: string): void {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.download = name;
+  link.href = url;
+  link.rel = "noopener";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  setTimeout(() => URL.revokeObjectURL(url), 3000);
+}
+
+/** 将报告 DOM 导出为一张 PNG 长图；优先调起系统分享以便保存到相册。 */
 export async function downloadReportImage({
   element,
   fileName,
   backgroundColor = "#18181b",
   scale = 2,
 }: ReportCaptureOptions): Promise<void> {
+  await waitForFontsAndPaint();
+
+  const w = Math.max(1, Math.ceil(element.scrollWidth));
+  const h = Math.max(1, Math.ceil(element.scrollHeight));
+
   const canvas = await html2canvas(element, {
     scale,
     backgroundColor,
+    width: w,
+    height: h,
+    windowWidth: w,
+    windowHeight: h,
     logging: false,
     useCORS: true,
+    scrollX: 0,
+    scrollY: 0,
     onclone(clonedDocument, clonedElement) {
       prepareCloneSubtreeForHtml2Canvas(element, clonedElement);
       scrubCloneSubtreeUsingComputedStyle(clonedElement, clonedDocument);
@@ -354,15 +418,28 @@ export async function downloadReportImage({
     },
   });
 
-  const imgData = canvas.toDataURL("image/png");
   const base = fileName.replace(/\.(pdf|png)$/i, "").trim() || "report";
   const name = `${base}.png`;
 
-  const link = document.createElement("a");
-  link.download = name;
-  link.href = imgData;
-  link.rel = "noopener";
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  const blob: Blob | null = await new Promise((resolve) =>
+    canvas.toBlob((b) => resolve(b), "image/png"),
+  );
+
+  if (!blob) {
+    const dataUrl = canvas.toDataURL("image/png");
+    const link = document.createElement("a");
+    link.download = name;
+    link.href = dataUrl;
+    link.rel = "noopener";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    return;
+  }
+
+  const shared =
+    shouldPreferNativeShareSheet() && (await trySharePngFile(blob, name));
+  if (!shared) {
+    triggerDownload(blob, name);
+  }
 }

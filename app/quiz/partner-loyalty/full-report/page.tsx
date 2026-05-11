@@ -35,19 +35,20 @@ export default function PartnerLoyaltyFullReportPage() {
     const scoresStr = localStorage.getItem(PARTNER_LOYALTY_LS.scores);
 
     let resolvedRisk: number | null = null;
-    if (riskStr !== null) {
-      resolvedRisk = parseInt(riskStr, 10);
-      if (Number.isNaN(resolvedRisk)) resolvedRisk = null;
-    }
-    if (resolvedRisk === null && scoresStr) {
+    if (scoresStr) {
       try {
         const arr = JSON.parse(scoresStr) as number[];
         if (Array.isArray(arr) && arr.length === partnerLoyaltyQuestions.length) {
           resolvedRisk = computePartnerRiskPercentage(sumScores(arr));
+          localStorage.setItem(PARTNER_LOYALTY_LS.risk, String(resolvedRisk));
         }
       } catch {
-        resolvedRisk = null;
+        // ignore
       }
+    }
+    if (resolvedRisk === null && riskStr !== null) {
+      resolvedRisk = parseInt(riskStr, 10);
+      if (Number.isNaN(resolvedRisk)) resolvedRisk = null;
     }
 
     if (resolvedRisk !== null) {
