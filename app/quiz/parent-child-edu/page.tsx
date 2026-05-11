@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { AgeGroup, getQuestionsForAge, processQuizResults, eduTypes } from "@/data/quizzes/parentChildEdu";
-import { saveTestAccess } from "@/utils/storage";
+import { AgeGroup, getQuestionsForAge, processQuizResults } from "@/data/quizzes/parentChildEdu";
+import { PARENT_CHILD_LS } from "@/lib/quiz/parentChildStorage";
 
 const ageGroups: { key: AgeGroup; label: string; emoji: string }[] = [
   { key: "3-5", label: "3－5岁（学龄前）", emoji: "🍼" },
@@ -44,19 +44,15 @@ export default function ParentChildEduPage() {
         setCurrentIndex(currentIndex + 1);
         setIsAnimating(false);
       } else {
-        // 完成测试，保存结果并开启测试放行
+        // 完成测试，保存结果（完整报告需支付解锁）
         const numericAnswers = newAnswers.map(a => a ?? 0);
         const { dimScores, eduType } = processQuizResults(numericAnswers, questions);
 
-        // 保存到 localStorage
-        localStorage.setItem("parent_child_edu_answers", JSON.stringify(numericAnswers));
-        localStorage.setItem("parent_child_edu_dimScores", JSON.stringify(dimScores));
-        localStorage.setItem("parent_child_edu_eduType", String(eduType));
-        localStorage.setItem("parent_child_edu_age", selectedAge ?? "3-5");
-
-        // 开启24小时测试放行（无需支付）
-        const typeLabel = `${selectedAge}-${eduTypes[eduType].main}`;
-        saveTestAccess("parent-child-edu", typeLabel);
+        localStorage.setItem(PARENT_CHILD_LS.answers, JSON.stringify(numericAnswers));
+        localStorage.setItem(PARENT_CHILD_LS.questionIds, JSON.stringify(questions.map((q) => q.id)));
+        localStorage.setItem(PARENT_CHILD_LS.dimScores, JSON.stringify(dimScores));
+        localStorage.setItem(PARENT_CHILD_LS.eduType, String(eduType));
+        localStorage.setItem(PARENT_CHILD_LS.age, selectedAge ?? "3-5");
 
         // 跳转到结果页
         router.push(`/quiz/parent-child-edu/result`);

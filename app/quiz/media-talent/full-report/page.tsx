@@ -12,8 +12,7 @@ import {
   tracks,
   buildReportData,
 } from "@/data/quizzes/mediaTalent";
-import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
+import { downloadReportImage } from "@/utils/reportPdf";
 
 interface FullReportData {
   topTrack: TrackType;
@@ -86,55 +85,19 @@ export default function FullReportPage() {
     setIsLoading(false);
   }, [router]);
 
-  const handleDownloadPDF = async () => {
-    if (!contentRef.current || isDownloading) return;
+  const handleSaveReportImage = async () => {
+    if (!contentRef.current || isDownloading || !reportData) return;
 
     setIsDownloading(true);
 
     try {
-      const element = contentRef.current;
-
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        backgroundColor: "#18181b",
-        logging: false,
-        useCORS: true,
+      const trackName = tracks[reportData.topTrack].name.replace(/[🚀💖💡💰\s]/g, "");
+      await downloadReportImage({
+        element: contentRef.current,
+        fileName: `Mia图灵迷宫-${trackName}-完整报告`,
       });
-
-      const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF({
-        orientation: "portrait",
-        unit: "mm",
-        format: "a4",
-      });
-
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      const imgWidth = pageWidth;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-      let heightLeft = imgHeight;
-      let position = 0;
-
-      pdf.setFillColor(24, 24, 27);
-      pdf.rect(0, 0, pageWidth, pageHeight, "F");
-
-      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-
-      while (heightLeft > 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.setFillColor(24, 24, 27);
-        pdf.rect(0, 0, pageWidth, pageHeight, "F");
-        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-      }
-
-      const trackName = tracks[reportData!.topTrack].name.replace(/[🚀💖💡💰\s]/g, "");
-      pdf.save(`Mia图灵迷宫-${trackName}-完整报告.pdf`);
     } catch (error) {
-      console.error("PDF生成失败:", error);
+      console.error("长图生成失败:", error);
     } finally {
       setIsDownloading(false);
     }
@@ -177,7 +140,7 @@ export default function FullReportPage() {
         </div>
       </nav>
 
-      {/* Content - Ref for PDF */}
+      {/* Report body — ref target for long-image export */}
       <main ref={contentRef} className="mx-auto max-w-4xl px-4 py-12" style={{ backgroundColor: "#18181b" }}>
         {/* Title Section */}
         <div className="text-center mb-12">
@@ -295,17 +258,17 @@ export default function FullReportPage() {
           </div>
         </div>
 
-        {/* Footer in PDF */}
+        {/* Footer in exported image */}
         <div className="text-center mt-8 pt-8 border-t border-zinc-800">
           <p className="text-zinc-500 text-sm">© 2026 Mia的图灵迷宫 · 探索人格的无限可能</p>
         </div>
       </main>
 
-      {/* Download Button - Outside PDF content */}
+      {/* Download — outside captured content */}
       <div className="mx-auto max-w-4xl px-4 pb-12 -mt-4">
         <div className="text-center mb-8">
           <button
-            onClick={handleDownloadPDF}
+            onClick={handleSaveReportImage}
             disabled={isDownloading}
             className="inline-flex items-center gap-2 px-8 py-4 rounded-full bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white font-semibold transition-all hover:scale-105 hover:shadow-lg hover:shadow-purple-500/25 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
           >
@@ -320,9 +283,14 @@ export default function FullReportPage() {
             ) : (
               <>
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                  />
                 </svg>
-                下载PDF完整报告
+                保存报告（长图）
               </>
             )}
           </button>

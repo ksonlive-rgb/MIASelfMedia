@@ -4,6 +4,21 @@ import crypto from "crypto";
 export async function POST(request: NextRequest) {
   const orderNo = `MIA_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
 
+  let paymentKind = "";
+  try {
+    const body = await request.json();
+    paymentKind = typeof body?.type === "string" ? body.type : "";
+  } catch {
+    paymentKind = "";
+  }
+
+  const orderTitle =
+    paymentKind === "parent-child-edu"
+      ? "亲子教育画像测试"
+      : paymentKind === "partner-loyalty"
+        ? "伴侣忠诚度测试（情侣版）"
+        : "自媒体天赋测试";
+
   try {
     const appId = process.env.ZPAY_APP_ID;
     const appKey = process.env.ZPAY_APP_KEY;
@@ -28,8 +43,8 @@ export async function POST(request: NextRequest) {
       out_trade_no: orderNo,
       notify_url: notifyUrl,
       return_url: returnUrl,
-      name: "自媒体天赋测试",
-      money: "0.01",
+      name: orderTitle,
+      money: "9.9",
       clientip: "127.0.0.1",
     };
 
@@ -48,8 +63,8 @@ export async function POST(request: NextRequest) {
     formData.append("out_trade_no", orderNo);
     formData.append("notify_url", notifyUrl);
     formData.append("return_url", returnUrl);
-    formData.append("name", "自媒体天赋测试");
-    formData.append("money", "0.01");
+    formData.append("name", orderTitle);
+    formData.append("money", "9.9");
     formData.append("clientip", "127.0.0.1");
     formData.append("sign_type", "MD5");
     formData.append("sign", sign);
@@ -61,8 +76,8 @@ export async function POST(request: NextRequest) {
       out_trade_no: orderNo,
       notify_url: notifyUrl,
       return_url: returnUrl,
-      name: "自媒体天赋测试",
-      money: "0.01",
+      name: orderTitle,
+      money: "9.9",
       clientip: "127.0.0.1",
       sign_type: "MD5",
       sign: sign,
@@ -144,8 +159,8 @@ export async function POST(request: NextRequest) {
       out_trade_no: orderNo,
       notify_url: notifyUrl,
       return_url: returnUrl,
-      name: "自媒体天赋测试",
-      money: "0.01",
+      name: orderTitle,
+      money: "9.9",
       clientip: "127.0.0.1",
     };
 
@@ -160,8 +175,8 @@ export async function POST(request: NextRequest) {
       out_trade_no: orderNo,
       notify_url: notifyUrl,
       return_url: returnUrl,
-      name: "自媒体天赋测试",
-      money: "0.01",
+      name: orderTitle,
+      money: "9.9",
       clientip: "127.0.0.1",
       sign_type: "MD5",
       sign: sign,

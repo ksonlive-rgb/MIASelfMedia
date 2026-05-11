@@ -5,11 +5,14 @@ import { useEffect, useState } from "react";
 import { getPaidStatus } from "@/utils/storage";
 
 export default function Home() {
-  const [hasPaidReport, setHasPaidReport] = useState(false);
+  const [hasMediaReport, setHasMediaReport] = useState(false);
+  const [hasPartnerReport, setHasPartnerReport] = useState(false);
+  const [hasParentReport, setHasParentReport] = useState(false);
 
   useEffect(() => {
-    const status = getPaidStatus("media-talent");
-    setHasPaidReport(!!status);
+    setHasMediaReport(!!getPaidStatus("media-talent"));
+    setHasPartnerReport(!!getPaidStatus("partner-loyalty"));
+    setHasParentReport(!!getPaidStatus("parent-child-edu"));
   }, []);
   return (
     <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-purple-950 to-zinc-950 text-zinc-100 flex flex-col">
@@ -22,20 +25,38 @@ export default function Home() {
             </div>
             <span className="font-semibold text-lg tracking-tight">Mia的图灵迷宫</span>
           </div>
+          <div className="flex flex-wrap items-center justify-end gap-2">
           <Link
             href="/quiz/media-talent"
             className="rounded-full bg-purple-600/20 border border-purple-500/30 px-4 py-2 text-sm font-medium text-purple-300 transition-all hover:bg-purple-600/40 hover:border-purple-500/50"
           >
             开始测试
           </Link>
-          {hasPaidReport && (
+          {hasMediaReport && (
             <Link
               href="/quiz/media-talent/full-report"
               className="rounded-full bg-zinc-800/50 border border-zinc-700/50 px-4 py-2 text-sm font-medium text-zinc-300 transition-all hover:bg-zinc-700/50 hover:border-zinc-600/50"
             >
-              找回我的报告
+              自媒体报告
             </Link>
           )}
+          {hasPartnerReport && (
+            <Link
+              href="/quiz/partner-loyalty/full-report"
+              className="rounded-full bg-zinc-800/50 border border-zinc-700/50 px-4 py-2 text-sm font-medium text-zinc-300 transition-all hover:bg-zinc-700/50 hover:border-zinc-600/50"
+            >
+              忠诚度报告
+            </Link>
+          )}
+          {hasParentReport && (
+            <Link
+              href="/quiz/parent-child-edu/full-report"
+              className="rounded-full bg-zinc-800/50 border border-zinc-700/50 px-4 py-2 text-sm font-medium text-zinc-300 transition-all hover:bg-zinc-700/50 hover:border-zinc-600/50"
+            >
+              亲子报告
+            </Link>
+          )}
+          </div>
         </div>
       </nav>
 
@@ -52,7 +73,7 @@ export default function Home() {
         </div>
 
         {/* Test Cards */}
-      <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl w-full px-4">
+      <div className="mt-8 grid grid-cols-1 gap-6 max-w-2xl w-full mx-auto px-4">
         {/* Media Talent Test Card */}
         <Link
           href="/quiz/media-talent"
@@ -104,7 +125,32 @@ export default function Home() {
                 <div className="mt-3 flex items-center gap-1.5 text-amber-400 text-xs font-medium">
                   <span>30题 · 约5分钟</span>
                   <span>·</span>
-                  <span>24小时免费测试</span>
+                  <span>¥9.9 解锁完整报告</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Link>
+
+        {/* Partner loyalty */}
+        <Link href="/quiz/partner-loyalty" className="group relative">
+          <div className="absolute -inset-1 bg-gradient-to-r from-yellow-600 to-amber-700 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-500" />
+          <div className="relative bg-zinc-900/90 border border-yellow-500/25 rounded-2xl p-6 md:p-8 backdrop-blur-sm group-hover:border-yellow-500/45 transition-all duration-300">
+            <div className="flex items-start gap-5">
+              <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-yellow-600/30 to-amber-700/30 border border-yellow-500/25 flex items-center justify-center shrink-0">
+                <span className="text-3xl">💛</span>
+              </div>
+              <div className="flex-1">
+                <h2 className="text-lg font-semibold text-purple-100 mb-1">
+                  伴侣忠诚度测试（情侣版）
+                </h2>
+                <p className="text-zinc-400 text-sm">
+                  潜意识行为切片 · 人格底色与关系风险提示
+                </p>
+                <div className="mt-3 flex flex-wrap items-center gap-1.5 text-yellow-400 text-xs font-medium">
+                  <span>50题 · 约5分钟</span>
+                  <span>·</span>
+                  <span>¥9.9 解锁完整报告</span>
                 </div>
               </div>
             </div>

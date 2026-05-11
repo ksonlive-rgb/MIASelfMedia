@@ -6,10 +6,12 @@ import {
   DimensionScores,
   eduTypes,
   dimensionLabels,
-  questionBank,
-  AgeGroup,
 } from "@/data/quizzes/parentChildEdu";
-import { getPaidStatus } from "@/utils/storage";
+import { savePaidStatus } from "@/utils/storage";
+import { PARENT_CHILD_LS } from "@/lib/quiz/parentChildStorage";
+
+/** 亲子测评解锁后进入完整报告（与手动访问路径一致） */
+const PARENT_CHILD_FULL_REPORT_HREF = "/quiz/parent-child-edu/full-report";
 
 function isMobileDevice(): boolean {
   if (typeof window === "undefined") return false;
@@ -21,10 +23,9 @@ interface PaymentModalProps {
   isOpen: boolean;
   onClose: () => void;
   eduTypeName: string;
-  isTestMode: boolean;
 }
 
-function PaymentModal({ isOpen, onClose, eduTypeName, isTestMode }: PaymentModalProps) {
+function PaymentModal({ isOpen, onClose, eduTypeName }: PaymentModalProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [payUrl, setPayUrl] = useState<string | null>(null);
@@ -35,15 +36,6 @@ function PaymentModal({ isOpen, onClose, eduTypeName, isTestMode }: PaymentModal
 
   useEffect(() => {
     if (!isOpen) return;
-
-    // 如果是测试模式，跳过支付直接完成
-    if (isTestMode) {
-      setIsPaid(true);
-      setTimeout(() => {
-        window.location.href = "/payment/success";
-      }, 1500);
-      return;
-    }
 
     setIsLoading(true);
     setError(null);
@@ -93,7 +85,7 @@ function PaymentModal({ isOpen, onClose, eduTypeName, isTestMode }: PaymentModal
       })
       .catch(() => setError("网络错误"))
       .finally(() => setIsLoading(false));
-  }, [isOpen, isTestMode]);
+  }, [isOpen]);
 
   useEffect(() => {
     if (!orderNo || !isPolling) return;
@@ -111,14 +103,9 @@ function PaymentModal({ isOpen, onClose, eduTypeName, isTestMode }: PaymentModal
           setIsPaid(true);
           setIsPolling(false);
           clearInterval(interval);
-          // 保存支付成功状态（不是测试模式）
-          localStorage.setItem("mia_turing_lab_paid_parent-child-edu", JSON.stringify({
-            quizId: "parent-child-edu",
-            type: eduTypeName,
-            timestamp: Date.now()
-          }));
+          savePaidStatus("parent-child-edu", eduTypeName);
           setTimeout(() => {
-            window.location.href = "/payment/success";
+            window.location.href = PARENT_CHILD_FULL_REPORT_HREF;
           }, 1500);
         }
       } catch {
@@ -156,19 +143,10 @@ function PaymentModal({ isOpen, onClose, eduTypeName, isTestMode }: PaymentModal
             </svg>
           </div>
           <h2 className="text-xl font-bold text-purple-100 mb-2">解锁完整教育指南</h2>
-          <p className="text-zinc-400 text-sm">
-            {isTestMode ? "测试期间可直接查看完整报告" : "支付后可查看完整报告"}
-          </p>
+          <p className="text-zinc-400 text-sm">支付后可查看完整报告</p>
         </div>
 
-        {isTestMode && (
-          <div className="text-center py-8">
-            <p className="text-purple-400 font-semibold mb-2">测试放行中</p>
-            <p className="text-zinc-400 text-sm">24小时内可免费查看完整报告</p>
-          </div>
-        )}
-
-        {isLoading && !isTestMode && (
+        {isLoading && (
           <div className="text-center py-8">
             <div className="w-12 h-12 mx-auto mb-4 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" />
             <p className="text-zinc-400">正在创建订单...</p>
@@ -227,7 +205,7 @@ function PaymentModal({ isOpen, onClose, eduTypeName, isTestMode }: PaymentModal
           </>
         )}
 
-        {!isLoading && !error && !qrCode && !isPaid && !isTestMode && (
+        {!isLoading && !error && !qrCode && !isPaid && (
           <div className="text-center">
             <p className="text-zinc-400 mb-4">正在准备支付...</p>
           </div>
@@ -245,13 +223,12 @@ interface ResultData {
 
 export default function ResultPage() {
   const [resultData, setResultData] = useState<ResultData | null>(null);
-  const [isTestMode, setIsTestMode] = useState(false);
   const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
-    const dimScoresStr = localStorage.getItem("parent_child_edu_dimScores");
-    const eduTypeStr = localStorage.getItem("parent_child_edu_eduType");
-    const age = localStorage.getItem("parent_child_edu_age") || "3-5";
+    const dimScoresStr = localStorage.getItem(PARENT_CHILD_LS.dimScores);
+    const eduTypeStr = localStorage.getItem(PARENT_CHILD_LS.eduType);
+    const age = localStorage.getItem(PARENT_CHILD_LS.age) || "3-5";
 
     if (!dimScoresStr || eduTypeStr === null) {
       return;
@@ -261,12 +238,6 @@ export default function ResultPage() {
     const eduType = parseInt(eduTypeStr ?? "0", 10);
 
     setResultData({ dimScores, eduType, age });
-
-    // 检查是否是测试放行模式
-    const paidStatus = getPaidStatus("parent-child-edu");
-    if (paidStatus?.testMode) {
-      setIsTestMode(true);
-    }
   }, []);
 
   if (!resultData) {
@@ -353,7 +324,10 @@ export default function ResultPage() {
 
         {/* Pay Wall */}
         <div className="bg-gradient-to-br from-purple-900/60 via-fuchsia-900/40 to-zinc-900/80 rounded-2xl p-8 border border-purple-500/40 text-center relative overflow-hidden">
-          <div className="absolute inset-0 opacity-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-purple-500 via-fuchsia-500 to-transparent" />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 opacity-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-purple-500 via-fuchsia-500 to-transparent"
+          />
 
           <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-purple-600/30 border border-purple-500/30 flex items-center justify-center">
             <svg className="w-8 h-8 text-purple-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -365,28 +339,18 @@ export default function ResultPage() {
           <p className="text-zinc-300 mb-6">
             包含深度孩子画像、家长画像、雷达图分析<br />
             以及为您量身定制的行动方案、心法清单和分阶段目标
-            {isTestMode && <span className="text-green-400 text-sm block mt-2">（测试期间免费查看）</span>}
           </p>
 
           <button
+            type="button"
             onClick={() => setShowModal(true)}
-            className="inline-flex items-center gap-2 px-10 py-4 rounded-full bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white font-semibold text-lg transition-all hover:scale-105 hover:shadow-lg hover:shadow-purple-500/25"
+            className="relative z-10 inline-flex items-center gap-2 px-10 py-4 rounded-full bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white font-semibold text-lg transition-all hover:scale-105 hover:shadow-lg hover:shadow-purple-500/25"
           >
-            {isTestMode ? (
-              <>
-                <span>免费查看完整报告</span>
-              </>
-            ) : (
-              <>
-                <span>立即解锁</span>
-                <span className="text-sm opacity-90">¥9.9</span>
-              </>
-            )}
+            <span>立即解锁</span>
+            <span className="text-sm opacity-90">¥9.9</span>
           </button>
 
-          {!isTestMode && (
-            <p className="text-zinc-500 text-xs mt-4">支付安全 · 24小时内可重复查看</p>
-          )}
+          <p className="text-zinc-500 text-xs mt-4">支付安全 · 24小时内可重复查看</p>
         </div>
 
         <div className="text-center mt-8">
@@ -404,7 +368,6 @@ export default function ResultPage() {
         isOpen={showModal}
         onClose={() => setShowModal(false)}
         eduTypeName={typeInfo.main}
-        isTestMode={isTestMode}
       />
     </div>
   );
